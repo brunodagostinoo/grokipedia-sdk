@@ -13,6 +13,66 @@ from grokipedia.exceptions import GrokipediaError
 
 # Define CLI group conditionally
 if click is not None:
+    def _format_page_text(page_obj) -> str:
+        """Format a page as plain text."""
+        lines = []
+
+        lines.append(f"# {page_obj.title}")
+        lines.append(f"URL: {page_obj.url}")
+        lines.append("")
+
+        if page_obj.summary:
+            lines.append(page_obj.summary)
+            lines.append("")
+
+        if page_obj.infobox:
+            lines.append("## Properties")
+            for key, value in page_obj.infobox.items():
+                lines.append(f"- **{key}**: {value}")
+            lines.append("")
+
+        for section in page_obj.sections:
+            lines.append(f"## {section.title}")
+            lines.append(section.text)
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def _format_page_html(page_obj) -> str:
+        """Format a page as HTML."""
+        lines = []
+
+        lines.append("<!DOCTYPE html>")
+        lines.append("<html>")
+        lines.append("<head>")
+        lines.append(f"<title>{page_obj.title}</title>")
+        lines.append("<meta charset='utf-8'>")
+        lines.append("</head>")
+        lines.append("<body>")
+
+        lines.append(f"<h1>{page_obj.title}</h1>")
+        lines.append(f"<p><em>URL: {page_obj.url}</em></p>")
+
+        if page_obj.summary:
+            lines.append(f"<p>{page_obj.summary}</p>")
+
+        if page_obj.infobox:
+            lines.append("<h2>Properties</h2>")
+            lines.append("<dl>")
+            for key, value in page_obj.infobox.items():
+                lines.append(f"<dt>{key}</dt>")
+                lines.append(f"<dd>{value}</dd>")
+            lines.append("</dl>")
+
+        for section in page_obj.sections:
+            lines.append(f"<h2>{section.title}</h2>")
+            lines.append(section.html)
+
+        lines.append("</body>")
+        lines.append("</html>")
+
+        return "\n".join(lines)
+
     @click.group()
     @click.option('--base-url', default='https://grokipedia.com',
                   help='Base URL for Grokipedia')
@@ -83,7 +143,7 @@ if click is not None:
     @click.option('--output', type=click.Path(),
                   help='Output file (default: stdout)')
     @click.pass_context
-    def page_cmd(ctx, title, output_format, output):
+    def page_cmd(ctx, title, format, output):
         """Fetch and display an article page."""
         client: GrokipediaClient = ctx.obj['client']
 
@@ -91,7 +151,7 @@ if click is not None:
             page_obj = client.get_page(title)
 
             # Generate output
-            if output_format == 'html':
+            if format == 'html':
                 output_content = _format_page_html(page_obj)
             else:
                 output_content = _format_page_text(page_obj)
@@ -107,66 +167,6 @@ if click is not None:
         except GrokipediaError as e:
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
-
-    def _format_page_text(page_obj) -> str:
-        """Format a page as plain text."""
-        lines = []
-
-        lines.append(f"# {page_obj.title}")
-        lines.append(f"URL: {page_obj.url}")
-        lines.append("")
-
-        if page_obj.summary:
-            lines.append(page_obj.summary)
-            lines.append("")
-
-        if page_obj.infobox:
-            lines.append("## Properties")
-            for key, value in page_obj.infobox.items():
-                lines.append(f"- **{key}**: {value}")
-            lines.append("")
-
-        for section in page_obj.sections:
-            lines.append(f"## {section.title}")
-            lines.append(section.text)
-            lines.append("")
-
-        return "\n".join(lines)
-
-    def _format_page_html(page_obj) -> str:
-        """Format a page as HTML."""
-        lines = []
-
-        lines.append("<!DOCTYPE html>")
-        lines.append("<html>")
-        lines.append("<head>")
-        lines.append(f"<title>{page_obj.title}</title>")
-        lines.append("<meta charset='utf-8'>")
-        lines.append("</head>")
-        lines.append("<body>")
-
-        lines.append(f"<h1>{page_obj.title}</h1>")
-        lines.append(f"<p><em>URL: {page_obj.url}</em></p>")
-
-        if page_obj.summary:
-            lines.append(f"<p>{page_obj.summary}</p>")
-
-        if page_obj.infobox:
-            lines.append("<h2>Properties</h2>")
-            lines.append("<dl>")
-            for key, value in page_obj.infobox.items():
-                lines.append(f"<dt>{key}</dt>")
-                lines.append(f"<dd>{value}</dd>")
-            lines.append("</dl>")
-
-        for section in page_obj.sections:
-            lines.append(f"<h2>{section.title}</h2>")
-            lines.append(section.html)
-
-        lines.append("</body>")
-        lines.append("</html>")
-
-        return "\n".join(lines)
 
 else:
     cli = None  # pylint: disable=invalid-name

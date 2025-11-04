@@ -59,7 +59,7 @@ class TestClientSitemapSearch:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_pagination_warning(self, mock_load_sitemap, mock_http_class, _mock_check, capsys):
+    def test_sitemap_search_pagination_warning(self, mock_load_sitemap, mock_http_class, _mock_check, caplog):
         """Test pagination warning for sitemap search."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -68,8 +68,7 @@ class TestClientSitemapSearch:
         client = GrokipediaClient(enable_api_search=False)
         results = client.search("mars", page=2)
 
-        captured = capsys.readouterr()
-        assert "Warning: Sitemap search does not support pagination" in captured.out
+        assert "Sitemap search does not support pagination" in caplog.text
         assert len(results) == 1  # Still returns results
 
     @patch('grokipedia.client.check_api_disallowed')
@@ -111,10 +110,12 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_enabled(self, mock_http_class, _mock_check):
+    def test_api_search_enabled(self, mock_http_class, mock_check):
         """Test that API search is used when enabled."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
+        # Mock check_api_disallowed to return False (API access allowed)
+        mock_check.return_value = False
 
         # Mock API response
         mock_http.get.return_value = '''{"results": [
@@ -133,10 +134,12 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_pagination(self, mock_http_class, _mock_check):
+    def test_api_search_pagination(self, mock_http_class, mock_check):
         """Test API search pagination."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
+        # Mock check_api_disallowed to return False (API access allowed)
+        mock_check.return_value = False
         mock_http.get.return_value = '[{"title": "Mars", "slug": "Mars", "snippet": "Planet"}]'
 
         client = GrokipediaClient(enable_api_search=True)
@@ -175,10 +178,12 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_missing_fields(self, mock_http_class, _mock_check):
+    def test_api_search_missing_fields(self, mock_http_class, mock_check):
         """Test API search handles missing fields in response."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
+        # Mock check_api_disallowed to return False (API access allowed)
+        mock_check.return_value = False
         mock_http.get.return_value = '''{"results": [
             {"title": "Mars", "slug": "Mars"},
             {"title": "Earth"}

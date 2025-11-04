@@ -29,35 +29,60 @@ class RobotsParser:
     def _parse_robots_txt(self, robots_txt: str, user_agent: str) -> None:
         """Parse robots.txt and extract rules for the given user agent."""
         lines = robots_txt.split('\n')
-        current_user_agent = None
-        user_agent_match = False
 
-        for line in lines:
+        # First pass: find the best matching user agent section
+        best_section_start = -1
+        best_specificity = 0  # 0 = none, 1 = *, 2 = prefix match, 3 = exact match
+
+        section_starts = []
+        for i, line in enumerate(lines):
             line = line.strip()
+            if line.lower().startswith('user-agent:'):
+                section_starts.append(i)
+                ua = line.split(':', 1)[1].strip().lower()
+                specificity = 0
+                if ua == "*":
+                    specificity = 1
+                elif ua == user_agent.lower():
+                    specificity = 3
+                elif user_agent.lower().startswith(ua):
+                    specificity = 2
+
+                if specificity > best_specificity:
+                    best_specificity = specificity
+                    best_section_start = i
+
+        # If no specific match found, use the best match or no rules
+        if best_section_start == -1:
+            # No user agent matched, allow all access (no rules)
+            return
+
+        # Second pass: collect rules only from the best matching section
+        current_user_agent = None
+        in_target_section = False
+
+        for i in range(best_section_start, len(lines)):
+            line = lines[i].strip()
             if not line or line.startswith('#'):
                 continue
 
             # Check for User-agent directive
             if line.lower().startswith('user-agent:'):
+                if in_target_section:
+                    # We've moved to the next section, stop
+                    break
                 current_user_agent = line.split(':', 1)[1].strip().lower()
-                user_agent_match = (
-                    current_user_agent == "*" or
-                    current_user_agent == user_agent.lower() or
-                    user_agent.lower().startswith(current_user_agent)
-                )
+                in_target_section = True
                 continue
 
-            # Only process rules if we match the current user agent
-            if current_user_agent is None or not user_agent_match:
-                continue
-
-            # Parse Allow/Disallow directives
-            if line.lower().startswith('allow:'):
-                path = line.split(':', 1)[1].strip()
-                self.rules.append((path, True))
-            elif line.lower().startswith('disallow:'):
-                path = line.split(':', 1)[1].strip()
-                self.rules.append((path, False))
+            # Parse Allow/Disallow directives in the target section
+            if in_target_section:
+                if line.lower().startswith('allow:'):
+                    path = line.split(':', 1)[1].strip()
+                    self.rules.append((path, True))
+                elif line.lower().startswith('disallow:'):
+                    path = line.split(':', 1)[1].strip()
+                    self.rules.append((path, False))
 
     def is_allowed(self, url: str) -> bool:
         """Check if a URL is allowed according to robots.txt rules.

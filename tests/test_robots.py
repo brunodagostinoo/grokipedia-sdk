@@ -1,5 +1,6 @@
 """Tests for robots.txt parsing and compliance."""
 
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -131,21 +132,21 @@ Disallow: /
             check_api_disallowed("https://example.com", Mock(spec=HttpClient))
 
     @patch('grokipedia.robots.fetch_robots_txt')
-    def test_check_api_disallowed_allows_api_paths(self, mock_fetch, capsys):
+    def test_check_api_disallowed_allows_api_paths(self, mock_fetch, caplog):
         """Test warning when API paths are allowed."""
         mock_fetch.return_value = '''User-agent: *
-Allow: /api/
-Allow: /
-'''
+    Allow: /api/
+    Allow: /
+    '''
 
         check_api_disallowed("https://example.com", Mock(spec=HttpClient))
 
-        captured = capsys.readouterr()
-        assert "Warning: API path /api/ is allowed by robots.txt" in captured.out
+        assert "API path /api/ is allowed by robots.txt" in caplog.text
 
     @patch('grokipedia.robots.fetch_robots_txt')
-    def test_check_api_disallowed_success_message(self, mock_fetch, capsys):
+    def test_check_api_disallowed_success_message(self, mock_fetch, caplog):
         """Test success message on compliant robots.txt."""
+        caplog.set_level(logging.INFO)  # Capture INFO level logs
         mock_fetch.return_value = '''User-agent: *
 Disallow: /api/
 Allow: /
@@ -153,8 +154,7 @@ Allow: /
 
         check_api_disallowed("https://example.com", Mock(spec=HttpClient))
 
-        captured = capsys.readouterr()
-        assert "Robots.txt compliance verified" in captured.out
+        assert "Robots.txt compliance verified" in caplog.text
 
     @patch('grokipedia.robots.fetch_robots_txt')
     def test_check_api_disallowed_strict_mode_allows_api(self, mock_fetch):
@@ -168,7 +168,7 @@ Allow: /
             check_api_disallowed("https://example.com", Mock(spec=HttpClient), strict=True)
 
     @patch('grokipedia.robots.fetch_robots_txt')
-    def test_check_api_disallowed_non_strict_returns_true(self, mock_fetch, capsys):
+    def test_check_api_disallowed_non_strict_returns_true(self, mock_fetch, caplog):
         """Test non-strict mode returns True when API is allowed."""
         mock_fetch.return_value = '''User-agent: *
 Allow: /api/
@@ -178,8 +178,7 @@ Allow: /
         result = check_api_disallowed("https://example.com", Mock(spec=HttpClient), strict=False)
 
         assert result is True
-        captured = capsys.readouterr()
-        assert "API search will be disabled" in captured.out
+        assert "API search will be disabled" in caplog.text
 
     @patch('grokipedia.robots.fetch_robots_txt')
     def test_check_api_disallowed_disallowed_returns_false(self, mock_fetch):

@@ -170,10 +170,12 @@ class TestClientInitialization:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_initialization_parameters(self, mock_http_class, _mock_check):
+    def test_client_initialization_parameters(self, mock_http_class, mock_check):
         """Test client passes parameters to HTTP client."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
+        # Mock check_api_disallowed to return False (API access allowed)
+        mock_check.return_value = False
 
         client = GrokipediaClient(
             base_url="https://test.com",
@@ -191,6 +193,7 @@ class TestClientInitialization:
             timeout=5.0,
             requests_per_minute=10,
             cache_ttl=60.0,
+            max_cache_entries=None,
         )
 
     @patch('grokipedia.client.check_api_disallowed')
