@@ -138,12 +138,12 @@ if click is not None:
 
     @cli.command(name='page')
     @click.argument('title')
-    @click.option('--format', type=click.Choice(['text', 'html']),
+    @click.option('--output-format', type=click.Choice(['text', 'html']),
                   default='text', help='Output format')
     @click.option('--output', type=click.Path(),
                   help='Output file (default: stdout)')
     @click.pass_context
-    def page_cmd(ctx, title, format, output):
+    def page_cmd(ctx, title, output_format, output):
         """Fetch and display an article page."""
         client: GrokipediaClient = ctx.obj['client']
 
@@ -151,7 +151,7 @@ if click is not None:
             page_obj = client.get_page(title)
 
             # Generate output
-            if format == 'html':
+            if output_format == 'html':
                 output_content = _format_page_html(page_obj)
             else:
                 output_content = _format_page_text(page_obj)

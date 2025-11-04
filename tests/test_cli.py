@@ -110,7 +110,7 @@ class TestCliPage:
         mock_client.get_page.return_value = mock_page
 
         runner = CliRunner()
-        result = runner.invoke(cli, ['page', 'Test Article', '--format', 'text'])
+        result = runner.invoke(cli, ['page', 'Test Article', '--output-format', 'text'])
 
         assert result.exit_code == 0
         assert "# Test Article" in result.output
@@ -136,7 +136,7 @@ class TestCliPage:
         mock_client.get_page.return_value = mock_page
 
         runner = CliRunner()
-        result = runner.invoke(cli, ['page', 'Test Article', '--format', 'html'])
+        result = runner.invoke(cli, ['page', 'Test Article', '--output-format', 'html'])
 
         assert result.exit_code == 0
         assert "<!DOCTYPE html>" in result.output

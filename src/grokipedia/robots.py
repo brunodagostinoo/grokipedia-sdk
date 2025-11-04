@@ -29,54 +29,64 @@ class RobotsParser:
     def _parse_robots_txt(self, robots_txt: str, user_agent: str) -> None:
         """Parse robots.txt and extract rules for the given user agent."""
         lines = robots_txt.split('\n')
+        best_section_start = self._find_best_section(lines, user_agent)
 
-        # First pass: find the best matching user agent section
-        best_section_start = -1
-        best_specificity = 0  # 0 = none, 1 = *, 2 = prefix match, 3 = exact match
-
-        section_starts = []
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if line.lower().startswith('user-agent:'):
-                section_starts.append(i)
-                ua = line.split(':', 1)[1].strip().lower()
-                specificity = 0
-                if ua == "*":
-                    specificity = 1
-                elif ua == user_agent.lower():
-                    specificity = 3
-                elif user_agent.lower().startswith(ua):
-                    specificity = 2
-
-                if specificity > best_specificity:
-                    best_specificity = specificity
-                    best_section_start = i
-
-        # If no specific match found, use the best match or no rules
+        # If no section matched, allow all access (no rules)
         if best_section_start == -1:
-            # No user agent matched, allow all access (no rules)
             return
 
-        # Second pass: collect rules only from the best matching section
-        current_user_agent = None
-        in_target_section = False
+        # Collect rules from the best matching section
+        self._collect_rules_from_section(lines, best_section_start)
 
-        for i in range(best_section_start, len(lines)):
+    def _find_best_section(self, lines: list[str], user_agent: str) -> int:
+        """Find the best matching user agent section."""
+        best_section_start = -1
+        best_specificity = 0
+
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line.lower().startswith('user-agent:'):
+                continue
+
+            ua = line.split(':', 1)[1].strip().lower()
+            specificity = self._calculate_specificity(user_agent, ua)
+
+            if specificity > best_specificity:
+                best_specificity = specificity
+                best_section_start = i
+
+        return best_section_start
+
+    def _calculate_specificity(self, user_agent: str, ua: str) -> int:
+        """Calculate how specific a user agent match is."""
+        user_agent_lower = user_agent.lower()
+        if ua == "*":
+            return 1
+        if ua == user_agent_lower:
+            return 3
+        if user_agent_lower.startswith(ua):
+            return 2
+        return 0
+
+    def _collect_rules_from_section(self, lines: list[str], start_index: int) -> None:
+        """Collect Allow/Disallow rules from a specific section."""
+        found_section_header = False
+
+        for i in range(start_index, len(lines)):
             line = lines[i].strip()
             if not line or line.startswith('#'):
                 continue
 
-            # Check for User-agent directive
+            # Handle user-agent directive
             if line.lower().startswith('user-agent:'):
-                if in_target_section:
-                    # We've moved to the next section, stop
+                if found_section_header:
+                    # We've reached the next section, stop
                     break
-                current_user_agent = line.split(':', 1)[1].strip().lower()
-                in_target_section = True
+                found_section_header = True
                 continue
 
-            # Parse Allow/Disallow directives in the target section
-            if in_target_section:
+            # Parse Allow/Disallow directives in the current section
+            if found_section_header:
                 if line.lower().startswith('allow:'):
                     path = line.split(':', 1)[1].strip()
                     self.rules.append((path, True))
