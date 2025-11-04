@@ -1,7 +1,6 @@
 """Command-line interface for Grokipedia SDK."""
 
 import sys
-from typing import Optional
 
 try:
     import click
@@ -12,17 +11,8 @@ from grokipedia import GrokipediaClient
 from grokipedia.exceptions import GrokipediaError
 
 
-def main():
-    """Main CLI entry point."""
-    if click is None:
-        print("Error: click is required for CLI. Install with: pip install grokipedia-sdk[cli]")
-        sys.exit(1)
-
-    cli()
-
-
+# Define CLI group conditionally
 if click is not None:
-
     @click.group()
     @click.option('--base-url', default='https://grokipedia.com',
                   help='Base URL for Grokipedia')
@@ -37,7 +27,7 @@ if click is not None:
     @click.option('--enable-api-search', is_flag=True,
                   help='Enable API-based search (uses /api/full-text-search)')
     @click.pass_context
-    def cli(ctx, base_url, user_agent, timeout, rate_limit, no_cache, enable_api_search):
+    def cli(ctx, base_url, user_agent, timeout, rate_limit, no_cache, enable_api_search):  # pylint: disable=too-many-arguments,too-many-positional-arguments
         """Grokipedia SDK command-line interface."""
         ctx.ensure_object(dict)
         ctx.obj['client'] = GrokipediaClient(
@@ -75,7 +65,8 @@ if click is not None:
                 click.echo(f"   URL: {result.url}")
                 if result.snippet:
                     # Truncate snippet if too long
-                    snippet = result.snippet[:100] + '...' if len(result.snippet) > 100 else result.snippet
+                    snippet = (result.snippet[:100] + '...'
+                              if len(result.snippet) > 100 else result.snippet)
                     click.echo(f"   Summary: {snippet}")
                 if result.thumbnail_url:
                     click.echo(f"   Thumbnail: {result.thumbnail_url}")
@@ -85,14 +76,14 @@ if click is not None:
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
 
-    @cli.command()
+    @cli.command(name='page')
     @click.argument('title')
     @click.option('--format', type=click.Choice(['text', 'html']),
                   default='text', help='Output format')
     @click.option('--output', type=click.Path(),
                   help='Output file (default: stdout)')
     @click.pass_context
-    def page(ctx, title, format, output):
+    def page_cmd(ctx, title, output_format, output):
         """Fetch and display an article page."""
         client: GrokipediaClient = ctx.obj['client']
 
@@ -100,7 +91,7 @@ if click is not None:
             page_obj = client.get_page(title)
 
             # Generate output
-            if format == 'html':
+            if output_format == 'html':
                 output_content = _format_page_html(page_obj)
             else:
                 output_content = _format_page_text(page_obj)
@@ -176,6 +167,18 @@ if click is not None:
         lines.append("</html>")
 
         return "\n".join(lines)
+
+else:
+    cli = None  # pylint: disable=invalid-name
+
+
+def main():
+    """Main CLI entry point."""
+    if click is None or cli is None:
+        print("Error: click is required for CLI. Install with: pip install grokipedia-sdk[cli]")
+        sys.exit(1)
+
+    cli.main(standalone_mode=False)
 
 
 if __name__ == '__main__':

@@ -89,6 +89,13 @@ strict_equality = true
 module = "grokipedia.cli"
 ignore_errors = true
 
+[tool.pylint]
+max-line-length = 120
+disable = [
+    "duplicate-code",
+    "protected-access",
+]
+
 [tool.pytest.ini_options]
 markers = [
     "live: enable tests that hit the real Grokipedia site",

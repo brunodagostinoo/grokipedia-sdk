@@ -1,7 +1,8 @@
 """Shared fixtures and helpers for Grokipedia SDK tests."""
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, patch
 
 from grokipedia.http import HttpClient
 
@@ -131,7 +132,7 @@ Disallow: /
 @pytest.fixture
 def mock_http_get():
     """Helper to create a mock HttpClient.get method."""
-    def _mock_get(url, **kwargs):
+    def _mock_get(url, **_kwargs):
         # Create a mock that returns different responses based on URL
         mock = Mock()
         if 'robots.txt' in url:
@@ -176,10 +177,10 @@ Allow: /
 
 
 @pytest.fixture
-def mock_http_client(mock_http_get):
+def mock_http_client(get_mock):
     """Mock HttpClient instance."""
     client = Mock(spec=HttpClient)
-    client.get = mock_http_get()
+    client.get = get_mock()
     client.clear_cache = Mock()
     client.get_cache_size = Mock(return_value=0)
     return client

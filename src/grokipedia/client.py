@@ -1,13 +1,14 @@
 """Main Grokipedia client."""
 
+import json
 import logging
 from typing import Dict, Iterator, List, Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import unquote, urlencode, urljoin
 
 from grokipedia.exceptions import NotFoundError, ParseError
 from grokipedia.http import HttpClient
 from grokipedia.models import Page, SearchResult
-from grokipedia.parser import _title_to_slug, parse_article_page, parse_search_results
+from grokipedia.parser import _title_to_slug, parse_article_page
 from grokipedia.robots import check_api_disallowed
 from grokipedia.sitemap import iter_sitemap_urls
 
@@ -16,8 +17,10 @@ logger = logging.getLogger(__name__)
 
 class GrokipediaClient:
     """Client for accessing Grokipedia content."""
+    # pylint: disable=too-many-arguments
+    # Complex client initialization requires many parameters for full configuration
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         base_url: str = "https://grokipedia.com",
         respect_robots: bool = True,
@@ -40,7 +43,8 @@ class GrokipediaClient:
             cache_ttl: Cache TTL in seconds (None to disable)
             max_cache_entries: Maximum number of cache entries (None for unlimited)
             enable_api_search: Enable API-based search (for future official API support)
-            robots_strict: Strict robots.txt compliance - raise error if API allowed when respect_robots=True
+            robots_strict: Strict robots.txt compliance - raise error if API allowed when
+                respect_robots=True
         """
         self.base_url = base_url.rstrip('/')
         self.respect_robots = respect_robots
@@ -87,7 +91,8 @@ class GrokipediaClient:
                     title = unquote(title_part).replace('_', ' ')
                     self._sitemap_cache[title] = url
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # Catch broad exceptions to avoid sitemap loading failures breaking search
             logger.warning("Failed to load sitemap for search: %s", e)
 
         return self._sitemap_cache
@@ -121,7 +126,8 @@ class GrokipediaClient:
 
         # Robots.txt compliant search using sitemap
         if page > 1:
-            logger.warning("Sitemap search does not support pagination. Ignoring page=%d parameter.", page)
+            logger.warning("Sitemap search does not support pagination. "
+                          "Ignoring page=%d parameter.", page)
 
         try:
             sitemap_index = self._load_sitemap_index()
@@ -151,12 +157,12 @@ class GrokipediaClient:
 
             return results
 
-        except Exception as e:
-            # Return empty list on error rather than failing
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # Return empty list on error rather than failing - search should be resilient
             logger.warning("Search failed for '%s': %s", query, e)
             return []
 
-    def _search_with_api(self, query: str, page: int, limit: int) -> List[SearchResult]:
+    def _search_with_api(self, query: str, page: int, limit: int) -> List[SearchResult]:  # pylint: disable=too-many-locals
         """Search using the Grokipedia full-text search API.
 
         Args:
@@ -167,9 +173,6 @@ class GrokipediaClient:
         Returns:
             List of search results for the specified page
         """
-        import json
-        from urllib.parse import urlencode, urljoin
-
         # Calculate offset from page number (1-based to 0-based)
         offset = (page - 1) * limit
 
@@ -214,7 +217,8 @@ class GrokipediaClient:
                     )
                     results.append(search_result)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # Return empty list on API errors - API search should fail gracefully
             logger.warning("API search failed for '%s' (page %d): %s", query, page, e)
             return []
 

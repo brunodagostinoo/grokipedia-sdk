@@ -40,21 +40,21 @@ Allow: /api/search
         assert parser.is_allowed("https://example.com/index.html") is True
         assert parser.is_allowed("https://example.com/api/search") is True
 
-        def test_parse_robots_txt_user_agent_matching(self):
-            """Test user agent matching."""
-            robots_txt = '''User-agent: *
+    def test_parse_robots_txt_user_agent_matching(self):  # pylint: disable=unused-argument
+        """Test user agent matching."""
+        robots_txt = '''User-agent: *
 Disallow: /
 
 User-agent: allowed-bot
 Allow: /
 '''
-            # Default user agent should be blocked
-            parser_default = RobotsParser(robots_txt, "*")
-            assert parser_default.is_allowed("https://example.com/") is False
+        # Default user agent should be blocked
+        parser_default = RobotsParser(robots_txt, "*")
+        assert parser_default.is_allowed("https://example.com/") is False
 
-            # Specific user agent should be allowed
-            parser_allowed = RobotsParser(robots_txt, "allowed-bot")
-            assert parser_allowed.is_allowed("https://example.com/") is True
+        # Specific user agent should be allowed
+        parser_allowed = RobotsParser(robots_txt, "allowed-bot")
+        assert parser_allowed.is_allowed("https://example.com/") is True
 
     def test_parse_robots_txt_no_matching_user_agent(self):
         """Test behavior with no matching user agent rules."""

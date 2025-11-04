@@ -1,7 +1,8 @@
 """HTML parsing utilities for Grokipedia pages."""
 
-from typing import Dict, List, Optional
-from urllib.parse import urljoin
+import re
+from typing import Dict
+from urllib.parse import quote, urljoin
 
 from bs4 import BeautifulSoup, Tag
 
@@ -9,7 +10,7 @@ from grokipedia.exceptions import ParseError
 from grokipedia.models import Page, Section, SearchResult
 
 
-def parse_article_page(html: str, base_url: str, url: str) -> Page:
+def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: disable=too-many-locals
     """Parse an article page HTML into a Page object.
 
     Args:
@@ -92,7 +93,7 @@ def parse_article_page(html: str, base_url: str, url: str) -> Page:
             infobox=infobox
         )
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         raise ParseError(f"Failed to parse article page: {e}") from e
 
 
@@ -119,14 +120,14 @@ def _parse_infobox_table(table: Tag) -> Dict[str, str]:
                 value = cells[1].get_text(separator=' ', strip=True)
                 if key and value and key != 'Property':  # Skip header keys
                     infobox[key] = value
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         # If parsing fails, return empty dict
         pass
 
     return infobox
 
 
-def parse_search_results(html: str, base_url: str, query: str) -> List[SearchResult]:
+def parse_search_results(html: str, base_url: str, _query: str):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Parse search results page HTML into SearchResult objects.
 
     Args:
@@ -140,7 +141,7 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
     Raises:
         ParseError: If parsing fails
     """
-    try:
+    try:  # pylint: disable=too-many-nested-blocks
         soup = BeautifulSoup(html, 'html.parser')
         results = []
 
@@ -183,7 +184,6 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
                         onclick = item.get('onclick', '')
                         if onclick and ('/page/' in onclick or 'window.location' in onclick):
                             # Try to extract URL from onclick - this is a simple heuristic
-                            import re
                             url_match = re.search(r'["\'](/page/[^"\']+)["\']', onclick)
                             if url_match:
                                 url = urljoin(base_url, url_match.group(1))
@@ -207,8 +207,8 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
                         # Check for background-image CSS in style attributes
                         style = item.get('style', '')
                         if 'background-image' in style:
-                            import re
-                            bg_match = re.search(r'background-image:\s*url\(["\']?([^"\']+)["\']?\)', style)
+                            bg_match = re.search(r'background-image:\s*url\(["\']?([^"\']+)'
+                                                r'["\']?\)', style)
                             if bg_match:
                                 thumbnail_url = urljoin(base_url, bg_match.group(1))
 
@@ -216,7 +216,8 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
                 snippet = None
 
                 # Look for elements that might contain descriptions/summaries
-                desc_selectors = ['.description', '.summary', '.snippet', '.excerpt', '[data-description]']
+                desc_selectors = ['.description', '.summary', '.snippet', '.excerpt',
+                                  '[data-description]']
                 for selector in desc_selectors:
                     desc_elem = item.select_one(selector)
                     if desc_elem:
@@ -238,7 +239,6 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
                         if all_text_parts:
                             snippet = ' '.join(all_text_parts).strip()
                             # Clean up extra whitespace
-                            import re
                             snippet = re.sub(r'\s+', ' ', snippet)
 
                         if snippet and len(snippet) > 200:
@@ -254,7 +254,7 @@ def parse_search_results(html: str, base_url: str, query: str) -> List[SearchRes
 
         return results
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         raise ParseError(f"Failed to parse search results: {e}") from e
 
 
@@ -267,9 +267,6 @@ def _title_to_slug(title: str) -> str:
     Returns:
         URL slug
     """
-    import re
-    from urllib.parse import quote
-
     # For now, just replace spaces with underscores
     # Preserve case and special characters as they appear in URLs
     slug = title.replace(' ', '_')

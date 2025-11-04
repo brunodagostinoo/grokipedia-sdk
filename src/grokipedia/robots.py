@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import List, Optional
+from typing import List
 from urllib.parse import urljoin, urlparse
 
 from grokipedia.exceptions import RobotsError
@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 class RobotsParser:
     """Simple robots.txt parser."""
+    # pylint: disable=too-few-public-methods
+    # Simple parser class focused on single responsibility
 
     def __init__(self, robots_txt: str, user_agent: str = "*"):
         """Parse robots.txt content.
@@ -135,13 +137,15 @@ def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str
         base_url: Base URL of the site
         http_client: HTTP client to use
         user_agent: User agent to check
-        strict: If True, raise error when API access would be disabled. If False, log warning and return True to disable API.
+        strict: If True, raise error when API access would be disabled. If False, log warning
+            and return True to disable API.
 
     Returns:
         True if API access should be disabled due to robots.txt, False otherwise
 
     Raises:
-        RobotsError: If robots.txt rules would prevent access to required resources, or if strict=True and API is disallowed
+        RobotsError: If robots.txt rules would prevent access to required resources, or if
+            strict=True and API is disallowed
     """
     robots_txt = fetch_robots_txt(base_url, http_client)
     parser = RobotsParser(robots_txt, user_agent)
@@ -171,10 +175,10 @@ def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str
 
     if api_allowed:
         if strict:
-            raise RobotsError("API endpoints are allowed by robots.txt but strict mode requires they be disallowed")
-        else:
-            logger.warning("API endpoints allowed by robots.txt - API search will be disabled for compliance")
-            return True  # Disable API access
+            raise RobotsError("API endpoints are allowed by robots.txt but strict mode "
+                              "requires they be disallowed")
+        logger.warning("API endpoints allowed by robots.txt - API search will be disabled for compliance")
+        return True  # Disable API access
 
     logger.info("Robots.txt compliance verified - API endpoints properly disallowed")
     return False  # API access is allowed (endpoints are properly disallowed)

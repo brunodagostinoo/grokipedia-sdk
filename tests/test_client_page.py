@@ -15,7 +15,7 @@ class TestClientGetPage:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.parse_article_page')
-    def test_get_page_by_title(self, mock_parse, mock_http_class, mock_check):
+    def test_get_page_by_title(self, mock_parse, mock_http_class, _mock_check):
         """Test fetching page by title."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -38,7 +38,7 @@ class TestClientGetPage:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.parse_article_page')
-    def test_get_page_by_url(self, mock_parse, mock_http_class, mock_check):
+    def test_get_page_by_url(self, mock_parse, mock_http_class, _mock_check):
         """Test fetching page by full URL."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -60,7 +60,7 @@ class TestClientGetPage:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_get_page_title_encoding(self, mock_http_class, mock_check):
+    def test_get_page_title_encoding(self, mock_http_class, _mock_check):
         """Test title encoding for URLs."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -77,7 +77,7 @@ class TestClientGetPage:
         client = GrokipediaClient()
         try:
             client.get_page("Mars (planet)")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass  # We just want to check the URL was called correctly
 
         # Should URL encode special characters
@@ -86,7 +86,7 @@ class TestClientGetPage:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_get_page_http_error(self, mock_http_class, mock_check):
+    def test_get_page_http_error(self, mock_http_class, _mock_check):
         """Test HTTP errors are wrapped as NotFoundError."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -100,7 +100,7 @@ class TestClientGetPage:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.parse_article_page')
-    def test_get_page_parse_error(self, mock_parse, mock_http_class, mock_check):
+    def test_get_page_parse_error(self, mock_parse, mock_http_class, _mock_check):
         """Test parse errors are wrapped as NotFoundError."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -113,13 +113,13 @@ class TestClientGetPage:
             client.get_page("BadPage")
 
 
-class TestClientIterSitemap:
+class TestClientIterSitemap:  # pylint: disable=too-few-public-methods
     """Test sitemap iteration functionality."""
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.iter_sitemap_urls')
-    def test_iter_sitemap_delegates(self, mock_iter_urls, mock_http_class, mock_check):
+    def test_iter_sitemap_delegates(self, mock_iter_urls, mock_http_class, _mock_check):
         """Test iter_sitemap delegates to iter_sitemap_urls."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -140,7 +140,7 @@ class TestClientCacheUtils:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_clear_cache_delegates(self, mock_http_class, mock_check):
+    def test_clear_cache_delegates(self, mock_http_class, _mock_check):
         """Test clear_cache delegates to HTTP client."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -152,7 +152,7 @@ class TestClientCacheUtils:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_get_cache_size_delegates(self, mock_http_class, mock_check):
+    def test_get_cache_size_delegates(self, mock_http_class, _mock_check):
         """Test get_cache_size delegates to HTTP client."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -170,7 +170,7 @@ class TestClientInitialization:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_initialization_parameters(self, mock_http_class, mock_check):
+    def test_client_initialization_parameters(self, mock_http_class, _mock_check):
         """Test client passes parameters to HTTP client."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -195,22 +195,22 @@ class TestClientInitialization:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_respects_robots_by_default(self, mock_http_class, mock_check):
+    def test_client_respects_robots_by_default(self, mock_http_class, _mock_check):
         """Test client checks robots.txt by default."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
 
         GrokipediaClient()
 
-        mock_check.assert_called_once()
+        _mock_check.assert_called_once()
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_can_skip_robots_check(self, mock_http_class, mock_check):
+    def test_client_can_skip_robots_check(self, mock_http_class, _mock_check):
         """Test client can skip robots.txt check."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
 
         GrokipediaClient(respect_robots=False)
 
-        mock_check.assert_not_called()
+        _mock_check.assert_not_called()

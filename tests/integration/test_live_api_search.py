@@ -16,7 +16,8 @@ class TestLiveApiSearch:
         results = client.search("elon musk", limit=5)
 
         assert len(results) > 0
-        assert all(isinstance(result, dict) for result in results) or all(hasattr(result, 'title') for result in results)
+        assert all(isinstance(result, dict) for result in results) or \
+               all(hasattr(result, 'title') for result in results)
 
         # If results are SearchResult objects, check basic structure
         if results and hasattr(results[0], 'title'):
@@ -66,4 +67,4 @@ class TestLiveApiSearch:
 
         results = client.search("xyzabc123nonexistent", limit=5)
         # Should return empty list, not fail
-        assert results == [] or len(results) == 0
+        assert not results

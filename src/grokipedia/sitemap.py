@@ -1,7 +1,6 @@
 """Sitemap parsing and iteration utilities."""
 
 import logging
-import re
 from typing import Iterator, List, Optional
 from urllib.parse import urljoin
 
@@ -36,7 +35,7 @@ def parse_sitemap_index(sitemap_xml: str) -> List[str]:
                 sitemap_urls.append(loc.text.strip())
 
         return sitemap_urls
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         raise ParseError(f"Failed to parse sitemap index: {e}") from e
 
 
@@ -63,7 +62,7 @@ def parse_sitemap_part(sitemap_xml: str) -> List[str]:
                 urls.append(loc.text.strip())
 
         return urls
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         raise ParseError(f"Failed to parse sitemap part: {e}") from e
 
 
@@ -89,7 +88,7 @@ def iter_sitemap_urls(
     sitemap_index_url = urljoin(base_url, '/sitemap.xml')
     try:
         sitemap_index_xml = http_client.get(sitemap_index_url)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         raise ParseError(f"Failed to fetch sitemap index: {e}") from e
 
     # Parse the index to get part URLs
@@ -103,7 +102,7 @@ def iter_sitemap_urls(
 
         try:
             part_xml = http_client.get(part_url)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             # Log warning but continue with other parts
             logger.warning("Failed to fetch sitemap part %s: %s", part_url, e)
             continue

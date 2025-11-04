@@ -1,8 +1,8 @@
 """Tests for CLI functionality."""
 
-import pytest
-from click.testing import CliRunner
 from unittest.mock import Mock, patch
+
+from click.testing import CliRunner
 
 from grokipedia.cli import cli
 from grokipedia.models import Page, SearchResult, Section

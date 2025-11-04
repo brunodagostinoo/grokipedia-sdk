@@ -3,8 +3,7 @@
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from typing import Any, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -15,8 +14,10 @@ from grokipedia.exceptions import HttpError, RateLimitError
 
 class HttpClient:
     """HTTP client with rate limiting, caching, and retry logic."""
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
+    # HTTP client requires many attributes for comprehensive configuration
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         user_agent: str = "grokipedia-sdk/0.1.0",
         timeout: float = 10.0,
@@ -87,7 +88,7 @@ class HttpClient:
         with self._rate_limit_lock:
             self._last_request_time = time.time()
 
-    def _get_cache_key(self, url: str, **kwargs: Any) -> str:
+    def _get_cache_key(self, url: str) -> str:
         """Generate a cache key from URL and params."""
         # For simplicity, just use the URL for now
         # Could be extended to include relevant query params
@@ -115,7 +116,7 @@ class HttpClient:
             RateLimitError: On rate limit violations
         """
         # Check cache first
-        cache_key = self._get_cache_key(url, **kwargs)
+        cache_key = self._get_cache_key(url)
         if cache_key in self._cache and self._is_cache_valid(self._cache[cache_key]):
             # Move to end (most recently used)
             self._cache.move_to_end(cache_key)
@@ -147,7 +148,8 @@ class HttpClient:
             if hasattr(e, 'response') and e.response is not None:
                 if e.response.status_code == 429:
                     raise RateLimitError(f"Rate limit exceeded for {url}") from e
-                raise HttpError(f"HTTP {e.response.status_code} for {url}: {e.response.text}") from e
+                raise HttpError(f"HTTP {e.response.status_code} for {url}: "
+                                f"{e.response.text}") from e
             raise HttpError(f"Request failed for {url}: {str(e)}") from e
 
     def clear_cache(self) -> None:

@@ -2,10 +2,7 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from grokipedia.client import GrokipediaClient
-from grokipedia.models import SearchResult
 
 
 class TestClientSitemapSearch:
@@ -14,7 +11,7 @@ class TestClientSitemapSearch:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_basic(self, mock_load_sitemap, mock_http_class, mock_check):
+    def test_sitemap_search_basic(self, mock_load_sitemap, mock_http_class, _mock_check):
         """Test basic sitemap search functionality."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -37,7 +34,7 @@ class TestClientSitemapSearch:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_ranking(self, mock_load_sitemap, mock_http_class, mock_check):
+    def test_sitemap_search_ranking(self, mock_load_sitemap, mock_http_class, _mock_check):
         """Test sitemap search result ranking."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -62,7 +59,7 @@ class TestClientSitemapSearch:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_pagination_warning(self, mock_load_sitemap, mock_http_class, mock_check, capsys):
+    def test_sitemap_search_pagination_warning(self, mock_load_sitemap, mock_http_class, _mock_check, capsys):
         """Test pagination warning for sitemap search."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -78,7 +75,7 @@ class TestClientSitemapSearch:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_no_results(self, mock_load_sitemap, mock_http_class, mock_check):
+    def test_sitemap_search_no_results(self, mock_load_sitemap, mock_http_class, _mock_check):
         """Test sitemap search with no matching results."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -87,12 +84,12 @@ class TestClientSitemapSearch:
         client = GrokipediaClient(enable_api_search=False)
         results = client.search("mars")
 
-        assert results == []
+        assert not results
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch.object(GrokipediaClient, '_load_sitemap_index')
-    def test_sitemap_search_limit(self, mock_load_sitemap, mock_http_class, mock_check):
+    def test_sitemap_search_limit(self, mock_load_sitemap, mock_http_class, _mock_check):
         """Test sitemap search respects limit parameter."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -114,7 +111,7 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_enabled(self, mock_http_class, mock_check):
+    def test_api_search_enabled(self, mock_http_class, _mock_check):
         """Test that API search is used when enabled."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -136,14 +133,14 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_pagination(self, mock_http_class, mock_check):
+    def test_api_search_pagination(self, mock_http_class, _mock_check):
         """Test API search pagination."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
         mock_http.get.return_value = '[{"title": "Mars", "slug": "Mars", "snippet": "Planet"}]'
 
         client = GrokipediaClient(enable_api_search=True)
-        results = client.search("mars", page=2, limit=5)
+        _results = client.search("mars", page=2, limit=5)
 
         # Check that offset is calculated correctly (page 2, limit 5 = offset 5)
         call_args = mock_http.get.call_args[0][0]
@@ -152,7 +149,7 @@ class TestClientApiSearch:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_invalid_json(self, mock_http_class, mock_check):
+    def test_api_search_invalid_json(self, mock_http_class, _mock_check):
         """Test API search handles invalid JSON gracefully."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -161,11 +158,11 @@ class TestClientApiSearch:
         client = GrokipediaClient(enable_api_search=True)
         results = client.search("test")
 
-        assert results == []  # Should return empty list on JSON error
+        assert not results  # Should return empty list on JSON error
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_http_error(self, mock_http_class, mock_check):
+    def test_api_search_http_error(self, mock_http_class, _mock_check):
         """Test API search handles HTTP errors gracefully."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -174,11 +171,11 @@ class TestClientApiSearch:
         client = GrokipediaClient(enable_api_search=True)
         results = client.search("test")
 
-        assert results == []  # Should return empty list on HTTP error
+        assert not results  # Should return empty list on HTTP error
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_api_search_missing_fields(self, mock_http_class, mock_check):
+    def test_api_search_missing_fields(self, mock_http_class, _mock_check):
         """Test API search handles missing fields in response."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http

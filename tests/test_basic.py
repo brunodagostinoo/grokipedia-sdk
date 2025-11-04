@@ -1,11 +1,8 @@
 """Basic tests for Grokipedia SDK."""
 
-import pytest
 from unittest.mock import Mock, patch
 
 from grokipedia.client import GrokipediaClient
-from grokipedia.exceptions import ParseError
-from grokipedia.models import Page, Section, SearchResult
 from grokipedia.parser import _title_to_slug, parse_article_page, parse_search_results
 from grokipedia.sitemap import parse_sitemap_index, parse_sitemap_part
 
@@ -30,13 +27,13 @@ class TestTitleToSlug:
         assert _title_to_slug("Mars: The Red Planet") == "Mars:_The_Red_Planet"
 
 
-class TestSitemapTitleDecoding:
+class TestSitemapTitleDecoding:  # pylint: disable=too-few-public-methods
     """Test sitemap title decoding in client."""
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.iter_sitemap_urls')
-    def test_sitemap_title_url_decoding(self, mock_iter_urls, mock_http_class, mock_check):
+    def test_sitemap_title_url_decoding(self, mock_iter_urls, mock_http_class, _mock_check):
         """Test that sitemap titles are properly URL-decoded."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -179,7 +176,7 @@ class TestArticleParsing:
         assert "another summary paragraph" in page.summary.lower()
 
 
-class TestSearchParsing:
+class TestSearchParsing:  # pylint: disable=too-few-public-methods
     """Test search results parsing."""
 
     def test_parse_search_results(self):
@@ -218,7 +215,7 @@ class TestClient:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_initialization(self, mock_http_class, mock_check_robots):
+    def test_client_initialization(self, mock_http_class, _mock_check_robots):
         """Test client initializes with correct parameters."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
@@ -244,22 +241,22 @@ class TestClient:
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_respects_robots(self, mock_http_class, mock_check):
+    def test_client_respects_robots(self, mock_http_class, _mock_check):
         """Test client checks robots.txt when respect_robots=True."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
 
         GrokipediaClient(respect_robots=True)
 
-        mock_check.assert_called_once()
+        _mock_check.assert_called_once()
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
-    def test_client_skips_robots_check(self, mock_http_class, mock_check):
+    def test_client_skips_robots_check(self, mock_http_class, _mock_check):
         """Test client skips robots.txt check when respect_robots=False."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
 
         GrokipediaClient(respect_robots=False)
 
-        mock_check.assert_not_called()
+        _mock_check.assert_not_called()

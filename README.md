@@ -21,7 +21,7 @@ pip install grokipedia-sdk
 Or for development:
 
 ```bash
-git clone https://github.com/yourusername/grokipedia-sdk.git
+git clone https://github.com/brunodagostinoo/grokipedia-sdk.git
 cd grokipedia-sdk
 pip install -e ".[dev,cli]"
 ```
