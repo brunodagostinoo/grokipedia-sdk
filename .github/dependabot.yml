@@ -1,0 +1,45 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      runtime-deps:
+        patterns:
+          - "requests"
+          - "beautifulsoup4"
+          - "lxml"
+      dev-deps:
+        patterns:
+          - "pytest*"
+          - "pytest-cov"
+          - "black"
+          - "isort"
+          - "mypy"
+          - "pylint"
+      cli-deps:
+        patterns:
+          - "click"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      timezone: "UTC"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
