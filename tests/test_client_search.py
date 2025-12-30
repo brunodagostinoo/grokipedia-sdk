@@ -140,7 +140,7 @@ class TestClientApiSearch:
         mock_http_class.return_value = mock_http
         # Mock check_api_disallowed to return False (API access allowed)
         mock_check.return_value = False
-        mock_http.get.return_value = '[{"title": "Mars", "slug": "Mars", "snippet": "Planet"}]'
+        mock_http.get.return_value = '{"results": [{"title": "Mars", "slug": "Mars", "snippet": "Planet"}]}'
 
         client = GrokipediaClient(enable_api_search=True)
         _results = client.search("mars", page=2, limit=5)

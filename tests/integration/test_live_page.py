@@ -23,9 +23,11 @@ class TestLivePageFetching:
         assert len(page.sections) > 0  # Should have sections
 
         # Check that sections have proper structure
+        # Note: some sections may have just a heading with no content
         for section in page.sections:
             assert section.title
-            assert section.html or section.text
+        # At least some sections should have content
+        assert any(s.html or s.text for s in page.sections)
 
     def test_fetch_page_with_infobox(self):
         """Test fetching a page that should have an infobox."""

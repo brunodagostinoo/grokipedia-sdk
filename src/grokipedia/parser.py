@@ -267,12 +267,7 @@ def _title_to_slug(title: str) -> str:
     Returns:
         URL slug
     """
-    # For now, just replace spaces with underscores
-    # Preserve case and special characters as they appear in URLs
+    # Replace spaces with underscores, then URL-encode all special characters
     slug = title.replace(' ', '_')
-
-    # URL encode if there are special characters that need encoding
-    if any(char in slug for char in '()[]{}'):
-        slug = quote(slug, safe='')
-
-    return slug
+    # Always encode to handle all special characters (#, ?, &, %, Unicode, etc.)
+    return quote(slug, safe='')

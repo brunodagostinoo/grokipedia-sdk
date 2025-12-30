@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from grokipedia.exceptions import HttpError, RateLimitError
+from grokipedia.exceptions import HttpError, NotFoundError, RateLimitError
 from grokipedia.http import HttpClient
 
 
@@ -87,7 +87,7 @@ class TestHttpClient:
 
     @patch('grokipedia.http.requests.Session.get')
     def test_http_error_mapping_404(self, mock_get):
-        """Test 404 errors map to HttpError."""
+        """Test 404 errors map to NotFoundError."""
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text = "Not found"
@@ -97,7 +97,7 @@ class TestHttpClient:
         mock_get.return_value = mock_response
 
         client = HttpClient()
-        with pytest.raises(HttpError, match="HTTP 404"):
+        with pytest.raises(NotFoundError, match="Not found"):
             client.get("http://example.com")
 
     @patch('grokipedia.http.requests.Session.get')

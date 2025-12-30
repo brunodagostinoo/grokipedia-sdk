@@ -108,13 +108,16 @@ class RobotsParser:
         if parsed.query:
             path += '?' + parsed.query
 
-        # Check rules in order (most specific first)
+        # Find the most specific (longest pattern) matching rule
+        best_match: tuple[int, bool] | None = None  # (pattern_length, allow)
         for pattern, allow in self.rules:
             if self._matches_pattern(path, pattern):
-                return allow
+                pattern_length = len(pattern)
+                if best_match is None or pattern_length > best_match[0]:
+                    best_match = (pattern_length, allow)
 
-        # Default: allow if no matching rules
-        return True
+        # Return the most specific match, or allow if no matching rules
+        return best_match[1] if best_match is not None else True
 
     def _matches_pattern(self, path: str, pattern: str) -> bool:
         """Check if a path matches a robots.txt pattern.

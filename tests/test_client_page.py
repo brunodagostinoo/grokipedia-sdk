@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from grokipedia.client import GrokipediaClient
-from grokipedia.exceptions import NotFoundError
+from grokipedia.exceptions import NotFoundError, ParseError
 from grokipedia.models import Page, Section
 
 
@@ -87,29 +87,29 @@ class TestClientGetPage:
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     def test_get_page_http_error(self, mock_http_class, _mock_check):
-        """Test HTTP errors are wrapped as NotFoundError."""
+        """Test HTTP NotFoundError propagates correctly."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
-        mock_http.get.side_effect = Exception("404 Not Found")
+        mock_http.get.side_effect = NotFoundError("Not found: https://grokipedia.com/page/NonExistent")
 
         client = GrokipediaClient()
 
-        with pytest.raises(NotFoundError, match="Failed to fetch page"):
+        with pytest.raises(NotFoundError, match="Not found"):
             client.get_page("NonExistent")
 
     @patch('grokipedia.client.check_api_disallowed')
     @patch('grokipedia.client.HttpClient')
     @patch('grokipedia.client.parse_article_page')
     def test_get_page_parse_error(self, mock_parse, mock_http_class, _mock_check):
-        """Test parse errors are wrapped as NotFoundError."""
+        """Test parse errors propagate correctly."""
         mock_http = Mock()
         mock_http_class.return_value = mock_http
         mock_http.get.return_value = "<html>...</html>"
-        mock_parse.side_effect = Exception("Parse failed")
+        mock_parse.side_effect = ParseError("Failed to parse article page")
 
         client = GrokipediaClient()
 
-        with pytest.raises(NotFoundError, match="Failed to fetch page"):
+        with pytest.raises(ParseError, match="Failed to parse"):
             client.get_page("BadPage")
 
 

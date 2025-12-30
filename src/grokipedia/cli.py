@@ -1,5 +1,6 @@
 """Command-line interface for Grokipedia SDK."""
 
+import html
 import sys
 
 try:
@@ -42,30 +43,35 @@ if click is not None:
         """Format a page as HTML."""
         lines = []
 
+        # Escape all user-controlled content to prevent XSS
+        title = html.escape(page_obj.title)
+        url = html.escape(page_obj.url)
+
         lines.append("<!DOCTYPE html>")
         lines.append("<html>")
         lines.append("<head>")
-        lines.append(f"<title>{page_obj.title}</title>")
+        lines.append(f"<title>{title}</title>")
         lines.append("<meta charset='utf-8'>")
         lines.append("</head>")
         lines.append("<body>")
 
-        lines.append(f"<h1>{page_obj.title}</h1>")
-        lines.append(f"<p><em>URL: {page_obj.url}</em></p>")
+        lines.append(f"<h1>{title}</h1>")
+        lines.append(f"<p><em>URL: {url}</em></p>")
 
         if page_obj.summary:
-            lines.append(f"<p>{page_obj.summary}</p>")
+            lines.append(f"<p>{html.escape(page_obj.summary)}</p>")
 
         if page_obj.infobox:
             lines.append("<h2>Properties</h2>")
             lines.append("<dl>")
             for key, value in page_obj.infobox.items():
-                lines.append(f"<dt>{key}</dt>")
-                lines.append(f"<dd>{value}</dd>")
+                lines.append(f"<dt>{html.escape(key)}</dt>")
+                lines.append(f"<dd>{html.escape(value)}</dd>")
             lines.append("</dl>")
 
         for section in page_obj.sections:
-            lines.append(f"<h2>{section.title}</h2>")
+            lines.append(f"<h2>{html.escape(section.title)}</h2>")
+            # section.html is already HTML from the source, keep as-is
             lines.append(section.html)
 
         lines.append("</body>")

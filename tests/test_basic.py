@@ -23,8 +23,8 @@ class TestTitleToSlug:
         assert _title_to_slug("Mars (planet)") == "Mars_%28planet%29"  # Should be URL encoded
 
     def test_title_with_punctuation(self):
-        """Test title with punctuation."""
-        assert _title_to_slug("Mars: The Red Planet") == "Mars:_The_Red_Planet"
+        """Test title with punctuation (now always URL-encoded)."""
+        assert _title_to_slug("Mars: The Red Planet") == "Mars%3A_The_Red_Planet"
 
 
 class TestSitemapTitleDecoding:  # pylint: disable=too-few-public-methods

@@ -9,7 +9,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from grokipedia.exceptions import HttpError, RateLimitError
+from grokipedia.exceptions import HttpError, NotFoundError, RateLimitError
 
 
 class HttpClient:
@@ -51,6 +51,7 @@ class HttpClient:
 
         # Simple in-memory LRU cache: url -> (timestamp, response_text)
         self._cache: OrderedDict[str, tuple[float, str]] = OrderedDict()
+        self._cache_lock = threading.Lock()
 
         # Create session with retry strategy
         self.session = requests.Session()
@@ -117,11 +118,12 @@ class HttpClient:
         """
         # Check cache first
         cache_key = self._get_cache_key(url)
-        if cache_key in self._cache and self._is_cache_valid(self._cache[cache_key]):
-            # Move to end (most recently used)
-            self._cache.move_to_end(cache_key)
-            _, cached_response = self._cache[cache_key]
-            return cached_response
+        with self._cache_lock:
+            if cache_key in self._cache and self._is_cache_valid(self._cache[cache_key]):
+                # Move to end (most recently used)
+                self._cache.move_to_end(cache_key)
+                _, cached_response = self._cache[cache_key]
+                return cached_response
 
         # Enforce rate limiting
         self._check_rate_limit()
@@ -135,17 +137,20 @@ class HttpClient:
 
             # Cache the response
             if self.cache_ttl is not None:
-                self._cache[cache_key] = (time.time(), response.text)
-                self._cache.move_to_end(cache_key)  # Mark as most recently used
+                with self._cache_lock:
+                    self._cache[cache_key] = (time.time(), response.text)
+                    self._cache.move_to_end(cache_key)  # Mark as most recently used
 
-                # Enforce cache size limit (LRU eviction)
-                if self.max_cache_entries is not None and len(self._cache) > self.max_cache_entries:
-                    self._cache.popitem(last=False)  # Remove oldest (least recently used)
+                    # Enforce cache size limit (LRU eviction)
+                    if self.max_cache_entries is not None and len(self._cache) > self.max_cache_entries:
+                        self._cache.popitem(last=False)  # Remove oldest (least recently used)
 
             return response.text
 
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
+                if e.response.status_code == 404:
+                    raise NotFoundError(f"Not found: {url}") from e
                 if e.response.status_code == 429:
                     raise RateLimitError(f"Rate limit exceeded for {url}") from e
                 raise HttpError(f"HTTP {e.response.status_code} for {url}: "
@@ -154,16 +159,28 @@ class HttpClient:
 
     def clear_cache(self) -> None:
         """Clear the in-memory cache."""
-        self._cache.clear()
+        with self._cache_lock:
+            self._cache.clear()
 
     def get_cache_size(self) -> int:
-        """Get the number of cached entries."""
-        # Clean expired entries first
-        now = time.time()
-        expired_keys = [
-            key for key, (timestamp, _) in self._cache.items()
-            if self.cache_ttl is not None and now - timestamp >= self.cache_ttl
-        ]
-        for key in expired_keys:
-            del self._cache[key]
-        return len(self._cache)
+        """Get the number of valid (non-expired) cached entries."""
+        with self._cache_lock:
+            if self.cache_ttl is None:
+                return len(self._cache)
+            now = time.time()
+            return sum(
+                1 for timestamp, _ in self._cache.values()
+                if now - timestamp < self.cache_ttl
+            )
+
+    def close(self) -> None:
+        """Close the HTTP session and release resources."""
+        self.session.close()
+
+    def __enter__(self) -> "HttpClient":
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Exit context manager and close session."""
+        self.close()

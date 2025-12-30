@@ -2,10 +2,13 @@
 
 import json
 import logging
+import time
 from typing import Dict, Iterator, List, Optional
 from urllib.parse import unquote, urlencode, urljoin
 
-from grokipedia.exceptions import NotFoundError, ParseError
+import requests
+
+from grokipedia.exceptions import GrokipediaError, NotFoundError, ParseError
 from grokipedia.http import HttpClient
 from grokipedia.models import Page, SearchResult
 from grokipedia.parser import _title_to_slug, parse_article_page
@@ -62,6 +65,8 @@ class GrokipediaClient:
 
         # Cache for sitemap data (title -> url mapping)
         self._sitemap_cache: Optional[Dict[str, str]] = None
+        self._sitemap_cache_time: Optional[float] = None
+        self._sitemap_cache_ttl = cache_ttl  # Use same TTL as HTTP cache
 
         # Check robots.txt compliance if requested
         if respect_robots:
@@ -70,14 +75,27 @@ class GrokipediaClient:
                 logger.warning("Disabling API search due to robots.txt compliance")
                 self.enable_api_search = False
 
+    def _is_sitemap_cache_valid(self) -> bool:
+        """Check if sitemap cache is still valid."""
+        if self._sitemap_cache is None or self._sitemap_cache_time is None:
+            return False
+        if self._sitemap_cache_ttl is None:
+            return True  # No TTL means cache forever
+        return time.time() - self._sitemap_cache_time < self._sitemap_cache_ttl
+
+    def refresh_sitemap(self) -> None:
+        """Force refresh of the sitemap cache."""
+        self._sitemap_cache = None
+        self._sitemap_cache_time = None
+
     def _load_sitemap_index(self) -> Dict[str, str]:
         """Load and cache sitemap data for search functionality.
 
         Returns:
             Dictionary mapping article titles to URLs
         """
-        if self._sitemap_cache is not None:
-            return self._sitemap_cache
+        if self._is_sitemap_cache_valid():
+            return self._sitemap_cache  # type: ignore[return-value]
 
         self._sitemap_cache = {}
 
@@ -91,8 +109,10 @@ class GrokipediaClient:
                     title = unquote(title_part).replace('_', ' ')
                     self._sitemap_cache[title] = url
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Catch broad exceptions to avoid sitemap loading failures breaking search
+            self._sitemap_cache_time = time.time()
+
+        except (GrokipediaError, requests.RequestException) as e:
+            # Catch known error types to avoid sitemap loading failures breaking search
             logger.warning("Failed to load sitemap for search: %s", e)
 
         return self._sitemap_cache
@@ -157,8 +177,8 @@ class GrokipediaClient:
 
             return results
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Return empty list on error rather than failing - search should be resilient
+        except (GrokipediaError, requests.RequestException) as e:
+            # Return empty list on known error types - search should be resilient
             logger.warning("Search failed for '%s': %s", query, e)
             return []
 
@@ -217,8 +237,8 @@ class GrokipediaClient:
                     )
                     results.append(search_result)
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Return empty list on API errors - API search should fail gracefully
+        except (GrokipediaError, requests.RequestException) as e:
+            # Return empty list on known error types - API search should fail gracefully
             logger.warning("API search failed for '%s' (page %d): %s", query, page, e)
             return []
 
@@ -244,14 +264,8 @@ class GrokipediaClient:
             slug = _title_to_slug(title_or_url)
             url = urljoin(self.base_url, f'/page/{slug}')
 
-        try:
-            html = self.http.get(url)
-            return parse_article_page(html, self.base_url, url)
-
-        except Exception as e:
-            if isinstance(e, NotFoundError):
-                raise
-            raise NotFoundError(f"Failed to fetch page '{title_or_url}': {e}") from e
+        html = self.http.get(url)
+        return parse_article_page(html, self.base_url, url)
 
     def iter_sitemap(self, max_urls: Optional[int] = None) -> Iterator[str]:
         """Iterate through article URLs from the sitemap.
