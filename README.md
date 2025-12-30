@@ -7,7 +7,7 @@
 
 A read-only Python SDK for [Grokipedia](https://grokipedia.com), an AI-generated online encyclopedia developed by xAI.
 
-**Status**: ✅ **Fully functional and tested** - All features working with comprehensive test coverage (12/12 tests passing)
+**Status**: ✅ **Fully functional and tested** - All features working with comprehensive test coverage
 
 ## Table of Contents
 
@@ -102,7 +102,7 @@ The CLI provides command-line access to all SDK features.
 ### Global Options
 
 - `--base-url URL`: Base URL for Grokipedia (default: https://grokipedia.com)
-- `--user-agent STRING`: User agent string (default: grokipedia-sdk/0.1.0)
+- `--user-agent STRING`: User agent string (default: grokipedia-sdk/VERSION)
 - `--timeout FLOAT`: Request timeout in seconds (default: 10.0)
 - `--rate-limit INT`: Requests per minute (default: 30)
 - `--no-cache`: Disable HTTP caching
@@ -152,7 +152,7 @@ Customize the `GrokipediaClient` behavior with these parameters:
 client = GrokipediaClient(
     base_url="https://grokipedia.com",      # Base URL for Grokipedia
     respect_robots=True,                    # Check robots.txt compliance
-    user_agent="grokipedia-sdk/0.1.0",      # User agent string
+    user_agent="my-app/1.0",                # Custom user agent string
     timeout=10.0,                           # Request timeout in seconds
     requests_per_minute=30,                 # Rate limiting
     cache_ttl=300.0,                        # Cache TTL in seconds (None to disable)

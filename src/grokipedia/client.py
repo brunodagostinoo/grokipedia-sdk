@@ -3,6 +3,7 @@
 import json
 import logging
 import time
+from importlib.metadata import version as get_version
 from typing import Dict, Iterator, List, Optional
 from urllib.parse import unquote, urlencode, urljoin
 
@@ -27,7 +28,7 @@ class GrokipediaClient:
         self,
         base_url: str = "https://grokipedia.com",
         respect_robots: bool = True,
-        user_agent: str = "grokipedia-sdk/0.1.0",
+        user_agent: str = "",  # Will be set to default in __init__
         timeout: float = 10.0,
         requests_per_minute: int = 30,
         cache_ttl: Optional[float] = 300.0,  # 5 minutes
@@ -53,6 +54,14 @@ class GrokipediaClient:
         self.respect_robots = respect_robots
         self.enable_api_search = enable_api_search
         self.robots_strict = robots_strict
+
+        # Set default user agent if not provided
+        if not user_agent:
+            try:
+                pkg_version = get_version("grokipedia-sdk")
+            except Exception:  # pylint: disable=broad-exception-caught
+                pkg_version = "0.2.0"
+            user_agent = f"grokipedia-sdk/{pkg_version}"
 
         # Initialize HTTP client
         self.http = HttpClient(

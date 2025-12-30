@@ -22,7 +22,6 @@ If you discover a security vulnerability in grokipedia-sdk, we appreciate your h
 
 **Please report security vulnerabilities by:**
 - Creating a **private security advisory** through [GitHub Security Advisories](https://github.com/brunodagostinoo/grokipedia-sdk/security/advisories/new)
-- **Alternative:** Email brunodagostinoo@users.noreply.github.com (GitHub noreply email)
 
 ### What to Include
 
@@ -70,6 +69,5 @@ We appreciate security researchers who help keep our users safe. With your permi
 
 For security-related questions or concerns:
 - GitHub Security Advisories: https://github.com/brunodagostinoo/grokipedia-sdk/security/advisories
-- Email: brunodagostinoo@users.noreply.github.com
 
-Thank you for helping keep grokipedia-sdk and its users secure! 🔒
+Thank you for helping keep grokipedia-sdk and its users secure!

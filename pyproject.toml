@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "grokipedia-sdk"
-version = "0.1.1"
+version = "0.2.0"
 description = "A read-only Python SDK for Grokipedia"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -33,6 +33,9 @@ dev = [
     "black>=23.0.0",
     "isort>=5.12.0",
     "mypy>=1.0.0",
+    "pylint>=3.0.0",
+    "types-requests>=2.31.0",
+    "types-beautifulsoup4>=4.12.0",
     "click>=8.0.0",
 ]
 cli = [
@@ -85,10 +88,6 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-
-[[tool.mypy.overrides]]
-module = "grokipedia.cli"
-ignore_errors = true
 
 [tool.pylint]
 max-line-length = 120

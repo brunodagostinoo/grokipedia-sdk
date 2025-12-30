@@ -1,7 +1,7 @@
 """HTML parsing utilities for Grokipedia pages."""
 
 import re
-from typing import Dict
+from typing import Dict, List, Optional
 from urllib.parse import quote, urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -29,17 +29,17 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
 
         # Find the main article content
         article = soup.find('article')
-        if not article:
+        if not article or not isinstance(article, Tag):
             raise ParseError("No article element found in page")
 
         # Extract title
-        title_elem = article.find(['h1'])
-        if not title_elem:
+        title_elem = article.find('h1')
+        if not title_elem or not isinstance(title_elem, Tag):
             raise ParseError("No title (h1) found in article")
         title = title_elem.get_text(strip=True)
 
         # Extract summary (content before first h2)
-        summary_parts = []
+        summary_parts: List[str] = []
         current = title_elem.find_next_sibling()
         while current and current.name != 'h2':
             if isinstance(current, Tag):
@@ -51,7 +51,7 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
         summary = ' '.join(summary_parts).strip()
 
         # Extract sections
-        sections = []
+        sections: List[Section] = []
         headings = article.find_all(['h2', 'h3'])
 
         for heading in headings:
@@ -80,9 +80,9 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
             ))
 
         # Try to extract infobox (first table in article)
-        infobox = None
+        infobox: Optional[Dict[str, str]] = None
         table = article.find('table')
-        if table:
+        if table and isinstance(table, Tag):
             infobox = _parse_infobox_table(table)
 
         return Page(
@@ -127,7 +127,7 @@ def _parse_infobox_table(table: Tag) -> Dict[str, str]:
     return infobox
 
 
-def parse_search_results(html: str, base_url: str, _query: str):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchResult]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Parse search results page HTML into SearchResult objects.
 
     Args:
@@ -143,12 +143,12 @@ def parse_search_results(html: str, base_url: str, _query: str):  # pylint: disa
     """
     try:  # pylint: disable=too-many-nested-blocks
         soup = BeautifulSoup(html, 'html.parser')
-        results = []
+        results: List[SearchResult] = []
 
         # Find result containers - based on observed structure, they seem to be in divs
         # Look for containers that have clickable elements with titles
         main_elem = soup.find('main')
-        if not main_elem:
+        if not main_elem or not isinstance(main_elem, Tag):
             return results
 
         # Find result items - they seem to be in containers within main

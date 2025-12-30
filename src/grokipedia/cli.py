@@ -3,14 +3,18 @@
 import html
 import sys
 from importlib.metadata import version
+from typing import Any, Optional
 
 try:
     import click
+    HAS_CLICK = True
 except ImportError:
-    click = None
+    click = None  # type: ignore[assignment]
+    HAS_CLICK = False
 
 from grokipedia import GrokipediaClient
 from grokipedia.exceptions import GrokipediaError
+from grokipedia.models import Page
 
 # Get version dynamically
 try:
@@ -20,8 +24,8 @@ except Exception:  # pylint: disable=broad-exception-caught
 
 
 # Define CLI group conditionally
-if click is not None:
-    def _format_page_text(page_obj) -> str:
+if HAS_CLICK and click is not None:
+    def _format_page_text(page_obj: Page) -> str:
         """Format a page as plain text (Markdown-style)."""
         lines = []
 
@@ -46,7 +50,7 @@ if click is not None:
 
         return "\n".join(lines)
 
-    def _format_page_html(page_obj) -> str:
+    def _format_page_html(page_obj: Page) -> str:
         """Format a page as HTML."""
         lines = []
 
@@ -103,7 +107,7 @@ if click is not None:
     @click.option('--enable-api-search', is_flag=True,
                   help='Enable API-based search (uses /api/full-text-search)')
     @click.pass_context
-    def cli(ctx, base_url, user_agent, timeout, rate_limit, no_cache, enable_api_search):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def cli(ctx: click.Context, base_url: str, user_agent: str, timeout: float, rate_limit: int, no_cache: bool, enable_api_search: bool) -> None:  # pylint: disable=too-many-arguments,too-many-positional-arguments
         """Grokipedia SDK command-line interface."""
         ctx.ensure_object(dict)
         ctx.obj['client'] = GrokipediaClient(
@@ -122,7 +126,7 @@ if click is not None:
     @click.option('--page', default=1, type=click.IntRange(min=1),
                   help='Page number (starts at 1)')
     @click.pass_context
-    def search(ctx, query, limit, page):
+    def search(ctx: click.Context, query: str, limit: int, page: int) -> None:
         """Search for articles."""
         client: GrokipediaClient = ctx.obj['client']
 
@@ -162,7 +166,7 @@ if click is not None:
     @click.option('--output', type=click.Path(),
                   help='Output file (default: stdout)')
     @click.pass_context
-    def page_cmd(ctx, title, output_format, output):
+    def page_cmd(ctx: click.Context, title: str, output_format: str, output: Optional[str]) -> None:
         """Fetch and display an article page."""
         client: GrokipediaClient = ctx.obj['client']
 
@@ -195,13 +199,14 @@ if click is not None:
             sys.exit(2)
 
 else:
-    cli = None  # pylint: disable=invalid-name
+    cli = None  # type: ignore[assignment]  # pylint: disable=invalid-name
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
-    if click is None or cli is None:
-        print("Error: click is required for CLI. Install with: pip install grokipedia-sdk[cli]")
+    if not HAS_CLICK or click is None or cli is None:
+        print("Error: click is required for CLI. "
+              "Install with: pip install grokipedia-sdk[cli]")
         sys.exit(1)
 
     try:

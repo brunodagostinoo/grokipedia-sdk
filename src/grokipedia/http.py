@@ -3,6 +3,7 @@
 import threading
 import time
 from collections import OrderedDict
+from importlib.metadata import version as get_version
 from typing import Any, Optional
 
 import requests
@@ -19,7 +20,7 @@ class HttpClient:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        user_agent: str = "grokipedia-sdk/0.1.0",
+        user_agent: str = "",  # Will be set to default in __init__
         timeout: float = 10.0,
         max_retries: int = 3,
         backoff_factor: float = 0.3,
@@ -38,6 +39,14 @@ class HttpClient:
             cache_ttl: Cache TTL in seconds (None to disable caching)
             max_cache_entries: Maximum number of cache entries (None for unlimited)
         """
+        # Set default user agent if not provided
+        if not user_agent:
+            try:
+                pkg_version = get_version("grokipedia-sdk")
+            except Exception:  # pylint: disable=broad-exception-caught
+                pkg_version = "0.2.0"
+            user_agent = f"grokipedia-sdk/{pkg_version}"
+
         self.user_agent = user_agent
         self.timeout = timeout
         self.requests_per_minute = requests_per_minute
