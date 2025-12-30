@@ -1,10 +1,12 @@
 """Tests for CLI functionality."""
 
+import os
 from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 
-from grokipedia.cli import cli
+from grokipedia.cli import cli, __version__
+from grokipedia.exceptions import GrokipediaError
 from grokipedia.models import Page, SearchResult, Section
 
 
@@ -61,18 +63,30 @@ class TestCliSearch:
         assert "No results found for 'nonexistent'" in result.output
 
     @patch('grokipedia.cli.GrokipediaClient')
-    def test_search_command_error(self, mock_client_class):
-        """Test search command error handling."""
+    def test_search_command_grokipedia_error(self, mock_client_class):
+        """Test search command handles GrokipediaError with exit code 1."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        mock_client.search.side_effect = Exception("Search failed")
+        mock_client.search.side_effect = GrokipediaError("Search failed")
 
         runner = CliRunner()
         result = runner.invoke(cli, ['search', 'test'])
 
         assert result.exit_code == 1
-        # Error messages may be in output or exception
-        assert "Search failed" in result.output or "Search failed" in str(result.exception)
+        assert "Error: Search failed" in result.output
+
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_search_command_unexpected_error(self, mock_client_class):
+        """Test search command handles unexpected errors with exit code 2."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        mock_client.search.side_effect = RuntimeError("Unexpected failure")
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['search', 'test'])
+
+        assert result.exit_code == 2
+        assert "Unexpected error: Unexpected failure" in result.output
 
     @patch('grokipedia.cli.GrokipediaClient')
     def test_search_command_with_page(self, mock_client_class):
@@ -173,18 +187,30 @@ class TestCliPage:
         assert "# Test" in content
 
     @patch('grokipedia.cli.GrokipediaClient')
-    def test_page_command_error(self, mock_client_class):
-        """Test page command error handling."""
+    def test_page_command_grokipedia_error(self, mock_client_class):
+        """Test page command handles GrokipediaError with exit code 1."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        mock_client.get_page.side_effect = Exception("Page not found")
+        mock_client.get_page.side_effect = GrokipediaError("Page not found")
 
         runner = CliRunner()
         result = runner.invoke(cli, ['page', 'NonExistent'])
 
         assert result.exit_code == 1
-        # Error messages may be in output or exception
-        assert "Page not found" in result.output or "Page not found" in str(result.exception)
+        assert "Error: Page not found" in result.output
+
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_page_command_unexpected_error(self, mock_client_class):
+        """Test page command handles unexpected errors with exit code 2."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        mock_client.get_page.side_effect = RuntimeError("Unexpected failure")
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['page', 'NonExistent'])
+
+        assert result.exit_code == 2
+        assert "Unexpected error: Unexpected failure" in result.output
 
     @patch('grokipedia.cli.GrokipediaClient')
     def test_page_command_default_format(self, mock_client_class):
@@ -206,6 +232,35 @@ class TestCliPage:
         assert result.exit_code == 0
         assert "# Test" in result.output  # Text format marker
 
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_page_command_file_write_error(self, mock_client_class, tmp_path):
+        """Test page command handles file write errors gracefully."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+
+        mock_page = Page(
+            title="Test",
+            url="https://example.com/page/Test",
+            summary="Summary",
+            sections=[],
+        )
+        mock_client.get_page.return_value = mock_page
+
+        # Create a directory where we try to write a file (will fail)
+        bad_path = tmp_path / "readonly_dir"
+        bad_path.mkdir()
+        os.chmod(bad_path, 0o444)  # Read-only
+
+        try:
+            output_file = bad_path / "output.txt"
+            runner = CliRunner()
+            result = runner.invoke(cli, ['page', 'Test', '--output', str(output_file)])
+
+            assert result.exit_code == 1
+            assert "Error writing to" in result.output
+        finally:
+            os.chmod(bad_path, 0o755)  # Restore permissions for cleanup
+
 
 class TestCliOptions:
     """Test CLI option handling."""
@@ -226,7 +281,7 @@ class TestCliOptions:
         assert result.exit_code == 0
         mock_client_class.assert_called_once_with(
             base_url='https://custom.com',
-            user_agent='grokipedia-sdk/0.1.0',
+            user_agent=f'grokipedia-sdk/{__version__}',
             timeout=10.0,
             requests_per_minute=30,
             cache_ttl=300.0,
@@ -272,7 +327,7 @@ class TestCliOptions:
         assert result.exit_code == 0
         mock_client_class.assert_called_once_with(
             base_url='https://grokipedia.com',
-            user_agent='grokipedia-sdk/0.1.0',
+            user_agent=f'grokipedia-sdk/{__version__}',
             timeout=10.0,
             requests_per_minute=30,
             cache_ttl=None,
@@ -295,9 +350,145 @@ class TestCliOptions:
         assert result.exit_code == 0
         mock_client_class.assert_called_once_with(
             base_url='https://grokipedia.com',
-            user_agent='grokipedia-sdk/0.1.0',
+            user_agent=f'grokipedia-sdk/{__version__}',
             timeout=10.0,
             requests_per_minute=30,
             cache_ttl=300.0,
             enable_api_search=True,
         )
+
+
+class TestCliInputValidation:
+    """Test CLI input validation."""
+
+    def test_invalid_timeout_negative(self):
+        """Test that negative timeout is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--timeout', '-1', 'search', 'test'])
+
+        assert result.exit_code != 0
+        assert "Invalid value" in result.output or "Error" in result.output
+
+    def test_invalid_timeout_too_large(self):
+        """Test that timeout > 300 is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--timeout', '500', 'search', 'test'])
+
+        assert result.exit_code != 0
+
+    def test_invalid_rate_limit_zero(self):
+        """Test that zero rate limit is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--rate-limit', '0', 'search', 'test'])
+
+        assert result.exit_code != 0
+
+    def test_invalid_limit_zero(self):
+        """Test that zero limit is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['search', 'test', '--limit', '0'])
+
+        assert result.exit_code != 0
+
+    def test_invalid_limit_negative(self):
+        """Test that negative limit is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['search', 'test', '--limit', '-5'])
+
+        assert result.exit_code != 0
+
+    def test_invalid_page_zero(self):
+        """Test that page 0 is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['search', 'test', '--page', '0'])
+
+        assert result.exit_code != 0
+
+    def test_invalid_page_negative(self):
+        """Test that negative page is rejected."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['search', 'test', '--page', '-1'])
+
+        assert result.exit_code != 0
+
+
+class TestCliHtmlEscaping:
+    """Test HTML output escaping for XSS prevention."""
+
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_html_escapes_xss_in_title(self, mock_client_class):
+        """Test that XSS payloads in title are escaped."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+
+        mock_page = Page(
+            title="<script>alert('xss')</script>",
+            url="https://example.com/page/Test",
+            summary="Safe summary",
+            sections=[],
+        )
+        mock_client.get_page.return_value = mock_page
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['page', 'Test', '--output-format', 'html'])
+
+        assert result.exit_code == 0
+        assert "<script>" not in result.output
+        assert "&lt;script&gt;" in result.output
+
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_html_escapes_xss_in_summary(self, mock_client_class):
+        """Test that XSS payloads in summary are escaped."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+
+        mock_page = Page(
+            title="Safe Title",
+            url="https://example.com/page/Test",
+            summary="<img src=x onerror=alert('xss')>",
+            sections=[],
+        )
+        mock_client.get_page.return_value = mock_page
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['page', 'Test', '--output-format', 'html'])
+
+        assert result.exit_code == 0
+        # html.escape converts < to &lt; which prevents the tag from being parsed
+        assert "<img src=x" not in result.output  # Raw tag should not appear
+        assert "&lt;img" in result.output  # Escaped version should appear
+
+    @patch('grokipedia.cli.GrokipediaClient')
+    def test_html_escapes_xss_in_infobox(self, mock_client_class):
+        """Test that XSS payloads in infobox are escaped."""
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+
+        mock_page = Page(
+            title="Safe Title",
+            url="https://example.com/page/Test",
+            summary="Safe summary",
+            sections=[],
+            infobox={"<script>bad</script>": "<script>worse</script>"},
+        )
+        mock_client.get_page.return_value = mock_page
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['page', 'Test', '--output-format', 'html'])
+
+        assert result.exit_code == 0
+        assert "<script>bad</script>" not in result.output
+        assert "&lt;script&gt;" in result.output
+
+
+class TestCliVersion:
+    """Test CLI version flag."""
+
+    def test_version_flag(self):
+        """Test --version displays version."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--version'])
+
+        assert result.exit_code == 0
+        assert "grokipedia" in result.output
+        assert __version__ in result.output

@@ -2,6 +2,7 @@
 
 import html
 import sys
+from importlib.metadata import version
 
 try:
     import click
@@ -11,11 +12,17 @@ except ImportError:
 from grokipedia import GrokipediaClient
 from grokipedia.exceptions import GrokipediaError
 
+# Get version dynamically
+try:
+    __version__ = version("grokipedia-sdk")
+except Exception:  # pylint: disable=broad-exception-caught
+    __version__ = "0.1.1"  # Fallback for development
+
 
 # Define CLI group conditionally
 if click is not None:
     def _format_page_text(page_obj) -> str:
-        """Format a page as plain text."""
+        """Format a page as plain text (Markdown-style)."""
         lines = []
 
         lines.append(f"# {page_obj.title}")
@@ -65,13 +72,15 @@ if click is not None:
             lines.append("<h2>Properties</h2>")
             lines.append("<dl>")
             for key, value in page_obj.infobox.items():
-                lines.append(f"<dt>{html.escape(key)}</dt>")
-                lines.append(f"<dd>{html.escape(value)}</dd>")
+                # Ensure values are strings before escaping
+                lines.append(f"<dt>{html.escape(str(key))}</dt>")
+                lines.append(f"<dd>{html.escape(str(value))}</dd>")
             lines.append("</dl>")
 
         for section in page_obj.sections:
             lines.append(f"<h2>{html.escape(section.title)}</h2>")
             # section.html is already HTML from the source, keep as-is
+            # Note: This is trusted content from Grokipedia's API
             lines.append(section.html)
 
         lines.append("</body>")
@@ -80,14 +89,15 @@ if click is not None:
         return "\n".join(lines)
 
     @click.group()
+    @click.version_option(version=__version__, prog_name='grokipedia')
     @click.option('--base-url', default='https://grokipedia.com',
                   help='Base URL for Grokipedia')
-    @click.option('--user-agent', default='grokipedia-sdk/0.1.0',
+    @click.option('--user-agent', default=f'grokipedia-sdk/{__version__}',
                   help='User agent string')
-    @click.option('--timeout', default=10.0, type=float,
-                  help='Request timeout in seconds')
-    @click.option('--rate-limit', default=30, type=int,
-                  help='Requests per minute')
+    @click.option('--timeout', default=10.0, type=click.FloatRange(min=0.1, max=300.0),
+                  help='Request timeout in seconds (0.1-300)')
+    @click.option('--rate-limit', default=30, type=click.IntRange(min=1, max=120),
+                  help='Requests per minute (1-120)')
     @click.option('--no-cache', is_flag=True,
                   help='Disable HTTP caching')
     @click.option('--enable-api-search', is_flag=True,
@@ -107,10 +117,10 @@ if click is not None:
 
     @cli.command()
     @click.argument('query')
-    @click.option('--limit', default=10, type=int,
-                  help='Maximum number of results')
-    @click.option('--page', default=1, type=int,
-                  help='Page number')
+    @click.option('--limit', default=10, type=click.IntRange(min=1, max=100),
+                  help='Maximum number of results (1-100)')
+    @click.option('--page', default=1, type=click.IntRange(min=1),
+                  help='Page number (starts at 1)')
     @click.pass_context
     def search(ctx, query, limit, page):
         """Search for articles."""
@@ -141,6 +151,9 @@ if click is not None:
         except GrokipediaError as e:
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            click.echo(f"Unexpected error: {e}", err=True)
+            sys.exit(2)
 
     @cli.command(name='page')
     @click.argument('title')
@@ -164,15 +177,22 @@ if click is not None:
 
             # Write to file or stdout
             if output:
-                with open(output, 'w', encoding='utf-8') as f:
-                    f.write(output_content)
-                click.echo(f"Page saved to {output}")
+                try:
+                    with open(output, 'w', encoding='utf-8') as f:
+                        f.write(output_content)
+                    click.echo(f"Page saved to {output}")
+                except OSError as e:
+                    click.echo(f"Error writing to {output}: {e}", err=True)
+                    sys.exit(1)
             else:
                 click.echo(output_content)
 
         except GrokipediaError as e:
             click.echo(f"Error: {e}", err=True)
             sys.exit(1)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            click.echo(f"Unexpected error: {e}", err=True)
+            sys.exit(2)
 
 else:
     cli = None  # pylint: disable=invalid-name
@@ -184,7 +204,13 @@ def main():
         print("Error: click is required for CLI. Install with: pip install grokipedia-sdk[cli]")
         sys.exit(1)
 
-    cli.main(standalone_mode=False)
+    try:
+        cli.main(standalone_mode=True)
+    except SystemExit:
+        raise
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        click.echo(f"Fatal error: {e}", err=True)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
