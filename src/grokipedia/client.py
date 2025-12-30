@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlencode, urljoin
 
 import requests
 
-from grokipedia.exceptions import GrokipediaError, NotFoundError, ParseError
+from grokipedia.exceptions import GrokipediaError, ParseError
 from grokipedia.http import HttpClient
 from grokipedia.models import Page, SearchResult
 from grokipedia.parser import _title_to_slug, parse_article_page
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class GrokipediaClient:
     """Client for accessing Grokipedia content."""
+
     # pylint: disable=too-many-arguments
     # Complex client initialization requires many parameters for full configuration
 
@@ -32,7 +33,9 @@ class GrokipediaClient:
         timeout: float = 10.0,
         requests_per_minute: int = 30,
         cache_ttl: Optional[float] = 300.0,  # 5 minutes
-        max_cache_entries: Optional[int] = None,  # Max cache entries, None for unlimited
+        max_cache_entries: Optional[
+            int
+        ] = None,  # Max cache entries, None for unlimited
         enable_api_search: bool = False,  # Feature flag for future official API
         robots_strict: bool = False,  # Strict robots.txt compliance (raise on API allowed)
     ):
@@ -50,7 +53,7 @@ class GrokipediaClient:
             robots_strict: Strict robots.txt compliance - raise error if API allowed when
                 respect_robots=True
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.respect_robots = respect_robots
         self.enable_api_search = enable_api_search
         self.robots_strict = robots_strict
@@ -79,7 +82,9 @@ class GrokipediaClient:
 
         # Check robots.txt compliance if requested
         if respect_robots:
-            api_disabled = check_api_disallowed(self.base_url, self.http, user_agent, robots_strict)
+            api_disabled = check_api_disallowed(
+                self.base_url, self.http, user_agent, robots_strict
+            )
             if api_disabled and enable_api_search:
                 logger.warning("Disabling API search due to robots.txt compliance")
                 self.enable_api_search = False
@@ -112,10 +117,10 @@ class GrokipediaClient:
             # Load first 1000 URLs from sitemap (reasonable limit for search)
             for url in self.iter_sitemap(max_urls=1000):
                 # Extract title from URL: /page/Title -> Title
-                if '/page/' in url:
-                    title_part = url.split('/page/')[-1]
+                if "/page/" in url:
+                    title_part = url.split("/page/")[-1]
                     # Decode URL-encoded characters and convert underscores to spaces
-                    title = unquote(title_part).replace('_', ' ')
+                    title = unquote(title_part).replace("_", " ")
                     self._sitemap_cache[title] = url
 
             self._sitemap_cache_time = time.time()
@@ -127,10 +132,7 @@ class GrokipediaClient:
         return self._sitemap_cache
 
     def search(
-        self,
-        query: str,
-        page: int = 1,
-        limit: Optional[int] = 10
+        self, query: str, page: int = 1, limit: Optional[int] = 10
     ) -> List[SearchResult]:
         """Search for articles on Grokipedia.
 
@@ -155,8 +157,11 @@ class GrokipediaClient:
 
         # Robots.txt compliant search using sitemap
         if page > 1:
-            logger.warning("Sitemap search does not support pagination. "
-                          "Ignoring page=%d parameter.", page)
+            logger.warning(
+                "Sitemap search does not support pagination. "
+                "Ignoring page=%d parameter.",
+                page,
+            )
 
         try:
             sitemap_index = self._load_sitemap_index()
@@ -169,20 +174,26 @@ class GrokipediaClient:
                     matches.append((title, url))
 
             # Sort by relevance (exact matches first, then substring matches)
-            matches.sort(key=lambda x: (
-                not x[0].lower().startswith(query_lower),  # Exact prefix matches first
-                len(x[0])  # Shorter titles first
-            ))
+            matches.sort(
+                key=lambda x: (
+                    not x[0]
+                    .lower()
+                    .startswith(query_lower),  # Exact prefix matches first
+                    len(x[0]),  # Shorter titles first
+                )
+            )
 
             # Convert to SearchResult objects
             results = []
-            for title, url in matches[:limit or 10]:
-                results.append(SearchResult(
-                    title=title,
-                    url=url,
-                    thumbnail_url=None,
-                    snippet=None  # No snippets available from sitemap
-                ))
+            for title, url in matches[: limit or 10]:
+                results.append(
+                    SearchResult(
+                        title=title,
+                        url=url,
+                        thumbnail_url=None,
+                        snippet=None,  # No snippets available from sitemap
+                    )
+                )
 
             return results
 
@@ -191,7 +202,9 @@ class GrokipediaClient:
             logger.warning("Search failed for '%s': %s", query, e)
             return []
 
-    def _search_with_api(self, query: str, page: int, limit: int) -> List[SearchResult]:  # pylint: disable=too-many-locals
+    def _search_with_api(
+        self, query: str, page: int, limit: int
+    ) -> List[SearchResult]:  # pylint: disable=too-many-locals
         """Search using the Grokipedia full-text search API.
 
         Args:
@@ -207,12 +220,10 @@ class GrokipediaClient:
 
         try:
             # Build API URL with pagination
-            params = {
-                'query': query,
-                'limit': limit,
-                'offset': offset
-            }
-            api_url = urljoin(self.base_url, f'/api/full-text-search?{urlencode(params)}')
+            params = {"query": query, "limit": limit, "offset": offset}
+            api_url = urljoin(
+                self.base_url, f"/api/full-text-search?{urlencode(params)}"
+            )
 
             # Make API request
             response_text = self.http.get(api_url)
@@ -224,25 +235,25 @@ class GrokipediaClient:
                 raise ParseError(f"Failed to parse API response as JSON: {e}") from e
 
             # Extract results
-            api_results = data.get('results', [])
+            api_results = data.get("results", [])
             results = []
 
             # Convert API results to SearchResult objects
             for api_result in api_results:
-                title = api_result.get('title', '')
-                slug = api_result.get('slug', '')
-                snippet = api_result.get('snippet', '')
+                title = api_result.get("title", "")
+                slug = api_result.get("slug", "")
+                snippet = api_result.get("snippet", "")
 
                 if title and slug:
                     # Build article URL from slug
-                    url = urljoin(self.base_url, f'/page/{slug}')
+                    url = urljoin(self.base_url, f"/page/{slug}")
 
                     # Create SearchResult - API doesn't provide thumbnails
                     search_result = SearchResult(
                         title=title,
                         url=url,
                         thumbnail_url=None,  # API doesn't provide thumbnails
-                        snippet=snippet if snippet else None
+                        snippet=snippet if snippet else None,
                     )
                     results.append(search_result)
 
@@ -266,12 +277,12 @@ class GrokipediaClient:
             NotFoundError: If page is not found
         """
         # Determine the URL
-        if title_or_url.startswith(('http://', 'https://')):
+        if title_or_url.startswith(("http://", "https://")):
             url = title_or_url
         else:
             # Assume it's a title, convert to URL
             slug = _title_to_slug(title_or_url)
-            url = urljoin(self.base_url, f'/page/{slug}')
+            url = urljoin(self.base_url, f"/page/{slug}")
 
         html = self.http.get(url)
         return parse_article_page(html, self.base_url, url)

@@ -7,10 +7,12 @@ from urllib.parse import quote, urljoin
 from bs4 import BeautifulSoup, Tag
 
 from grokipedia.exceptions import ParseError
-from grokipedia.models import Page, Section, SearchResult
+from grokipedia.models import Page, SearchResult, Section
 
 
-def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: disable=too-many-locals
+def parse_article_page(
+    html: str, _base_url: str, url: str
+) -> Page:  # pylint: disable=too-many-locals
     """Parse an article page HTML into a Page object.
 
     Args:
@@ -25,15 +27,15 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
         ParseError: If parsing fails
     """
     try:
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         # Find the main article content
-        article = soup.find('article')
+        article = soup.find("article")
         if not article or not isinstance(article, Tag):
             raise ParseError("No article element found in page")
 
         # Extract title
-        title_elem = article.find('h1')
+        title_elem = article.find("h1")
         if not title_elem or not isinstance(title_elem, Tag):
             raise ParseError("No title (h1) found in article")
         title = title_elem.get_text(strip=True)
@@ -41,18 +43,18 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
         # Extract summary (content before first h2)
         summary_parts: List[str] = []
         current = title_elem.find_next_sibling()
-        while current and current.name != 'h2':
+        while current and current.name != "h2":
             if isinstance(current, Tag):
                 # Skip navigation, buttons, scripts, styles, etc.
-                if current.name not in ['button', 'nav', 'aside', 'script', 'style']:
+                if current.name not in ["button", "nav", "aside", "script", "style"]:
                     summary_parts.append(current.get_text(strip=True))
             current = current.find_next_sibling()
 
-        summary = ' '.join(summary_parts).strip()
+        summary = " ".join(summary_parts).strip()
 
         # Extract sections
         sections: List[Section] = []
-        headings = article.find_all(['h2', 'h3'])
+        headings = article.find_all(["h2", "h3"])
 
         for heading in headings:
             section_title = heading.get_text(strip=True)
@@ -61,36 +63,36 @@ def parse_article_page(html: str, _base_url: str, url: str) -> Page:  # pylint: 
             content_parts = []
             current = heading.find_next_sibling()
 
-            while current and current.name not in ['h1', 'h2', 'h3']:
+            while current and current.name not in ["h1", "h2", "h3"]:
                 if isinstance(current, Tag):
                     # Skip certain elements
-                    if current.name not in ['button', 'nav', 'aside', 'script', 'style']:
+                    if current.name not in [
+                        "button",
+                        "nav",
+                        "aside",
+                        "script",
+                        "style",
+                    ]:
                         content_parts.append(str(current))
                 current = current.find_next_sibling()
 
             # Extract text version for easier processing
-            content_html = ''.join(content_parts)
-            content_soup = BeautifulSoup(content_html, 'html.parser')
-            content_text = content_soup.get_text(separator=' ', strip=True)
+            content_html = "".join(content_parts)
+            content_soup = BeautifulSoup(content_html, "html.parser")
+            content_text = content_soup.get_text(separator=" ", strip=True)
 
-            sections.append(Section(
-                title=section_title,
-                html=content_html,
-                text=content_text
-            ))
+            sections.append(
+                Section(title=section_title, html=content_html, text=content_text)
+            )
 
         # Try to extract infobox (first table in article)
         infobox: Optional[Dict[str, str]] = None
-        table = article.find('table')
+        table = article.find("table")
         if table and isinstance(table, Tag):
             infobox = _parse_infobox_table(table)
 
         return Page(
-            title=title,
-            url=url,
-            summary=summary,
-            sections=sections,
-            infobox=infobox
+            title=title, url=url, summary=summary, sections=sections, infobox=infobox
         )
 
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -109,16 +111,16 @@ def _parse_infobox_table(table: Tag) -> Dict[str, str]:
     infobox = {}
 
     try:
-        rows = table.find_all('tr')
+        rows = table.find_all("tr")
         # Skip the header row if it exists
-        start_row = 1 if len(rows) > 0 and rows[0].find('th') else 0
+        start_row = 1 if len(rows) > 0 and rows[0].find("th") else 0
 
         for row in rows[start_row:]:
-            cells = row.find_all(['td', 'th'])
+            cells = row.find_all(["td", "th"])
             if len(cells) >= 2:
                 key = cells[0].get_text(strip=True)
-                value = cells[1].get_text(separator=' ', strip=True)
-                if key and value and key != 'Property':  # Skip header keys
+                value = cells[1].get_text(separator=" ", strip=True)
+                if key and value and key != "Property":  # Skip header keys
                     infobox[key] = value
     except Exception:  # pylint: disable=broad-exception-caught
         # If parsing fails, return empty dict
@@ -127,7 +129,11 @@ def _parse_infobox_table(table: Tag) -> Dict[str, str]:
     return infobox
 
 
-def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchResult]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def parse_search_results(
+    html: str, base_url: str, _query: str
+) -> List[
+    SearchResult
+]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Parse search results page HTML into SearchResult objects.
 
     Args:
@@ -142,24 +148,25 @@ def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchRe
         ParseError: If parsing fails
     """
     try:  # pylint: disable=too-many-nested-blocks
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
         results: List[SearchResult] = []
 
         # Find result containers - based on observed structure, they seem to be in divs
         # Look for containers that have clickable elements with titles
-        main_elem = soup.find('main')
+        main_elem = soup.find("main")
         if not main_elem or not isinstance(main_elem, Tag):
             return results
 
         # Find result items - they seem to be in containers within main
-        result_containers = main_elem.find_all('div', recursive=False)
+        result_containers = main_elem.find_all("div", recursive=False)
         for container in result_containers:
             # Look for clickable result items
-            clickable_items = container.find_all('div', {'role': 'button'}) or \
-                            container.find_all('div', class_=lambda x: x and 'cursor-pointer' in x)
+            clickable_items = container.find_all(
+                "div", {"role": "button"}
+            ) or container.find_all("div", class_=lambda x: x and "cursor-pointer" in x)
 
             for item in clickable_items:
-                title_elem = item.find(['h3', 'h4', 'span', 'div'])
+                title_elem = item.find(["h3", "h4", "span", "div"])
                 if not title_elem:
                     continue
 
@@ -171,18 +178,20 @@ def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchRe
                 url = None
 
                 # Check for explicit links
-                link_elem = item.find('a', href=True)
+                link_elem = item.find("a", href=True)
                 if link_elem:
-                    url = urljoin(base_url, link_elem['href'])
+                    url = urljoin(base_url, link_elem["href"])
                 else:
                     # Check for data attributes or onclick handlers that might contain URLs
-                    data_url = item.get('data-url') or item.get('data-href')
+                    data_url = item.get("data-url") or item.get("data-href")
                     if data_url:
                         url = urljoin(base_url, data_url)
                     else:
                         # Look for onclick handlers with URL patterns
-                        onclick = item.get('onclick', '')
-                        if onclick and ('/page/' in onclick or 'window.location' in onclick):
+                        onclick = item.get("onclick", "")
+                        if onclick and (
+                            "/page/" in onclick or "window.location" in onclick
+                        ):
                             # Try to extract URL from onclick - this is a simple heuristic
                             url_match = re.search(r'["\'](/page/[^"\']+)["\']', onclick)
                             if url_match:
@@ -191,24 +200,28 @@ def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchRe
                     # Final fallback: derive from title
                     if not url:
                         slug = _title_to_slug(title)
-                        url = urljoin(base_url, f'/page/{slug}')
+                        url = urljoin(base_url, f"/page/{slug}")
 
                 # Try to find thumbnail - look in item and its children
                 thumbnail_url = None
-                img_elem = item.find('img', src=True)
+                img_elem = item.find("img", src=True)
                 if img_elem:
-                    thumbnail_url = urljoin(base_url, img_elem['src'])
+                    thumbnail_url = urljoin(base_url, img_elem["src"])
                 else:
                     # Look for images in child elements or background images
-                    img_elem = item.find('img', {'data-src': True})  # Lazy-loaded images
-                    if img_elem and img_elem.get('data-src'):
-                        thumbnail_url = urljoin(base_url, img_elem['data-src'])
+                    img_elem = item.find(
+                        "img", {"data-src": True}
+                    )  # Lazy-loaded images
+                    if img_elem and img_elem.get("data-src"):
+                        thumbnail_url = urljoin(base_url, img_elem["data-src"])
                     else:
                         # Check for background-image CSS in style attributes
-                        style = item.get('style', '')
-                        if 'background-image' in style:
-                            bg_match = re.search(r'background-image:\s*url\(["\']?([^"\']+)'
-                                                r'["\']?\)', style)
+                        style = item.get("style", "")
+                        if "background-image" in style:
+                            bg_match = re.search(
+                                r'background-image:\s*url\(["\']?([^"\']+)["\']?\)',
+                                style,
+                            )
                             if bg_match:
                                 thumbnail_url = urljoin(base_url, bg_match.group(1))
 
@@ -216,8 +229,13 @@ def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchRe
                 snippet = None
 
                 # Look for elements that might contain descriptions/summaries
-                desc_selectors = ['.description', '.summary', '.snippet', '.excerpt',
-                                  '[data-description]']
+                desc_selectors = [
+                    ".description",
+                    ".summary",
+                    ".snippet",
+                    ".excerpt",
+                    "[data-description]",
+                ]
                 for selector in desc_selectors:
                     desc_elem = item.select_one(selector)
                     if desc_elem:
@@ -237,20 +255,22 @@ def parse_search_results(html: str, base_url: str, _query: str) -> List[SearchRe
                                 all_text_parts.append(text)
 
                         if all_text_parts:
-                            snippet = ' '.join(all_text_parts).strip()
+                            snippet = " ".join(all_text_parts).strip()
                             # Clean up extra whitespace
-                            snippet = re.sub(r'\s+', ' ', snippet)
+                            snippet = re.sub(r"\s+", " ", snippet)
 
                         if snippet and len(snippet) > 200:
-                            snippet = snippet[:200] + '...'
+                            snippet = snippet[:200] + "..."
 
                 if url:
-                    results.append(SearchResult(
-                        title=title,
-                        url=url,
-                        thumbnail_url=thumbnail_url,
-                        snippet=snippet
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=title,
+                            url=url,
+                            thumbnail_url=thumbnail_url,
+                            snippet=snippet,
+                        )
+                    )
 
         return results
 
@@ -268,6 +288,6 @@ def _title_to_slug(title: str) -> str:
         URL slug
     """
     # Replace spaces with underscores, then URL-encode all special characters
-    slug = title.replace(' ', '_')
+    slug = title.replace(" ", "_")
     # Always encode to handle all special characters (#, ?, &, %, Unicode, etc.)
-    return quote(slug, safe='')
+    return quote(slug, safe="")

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class RobotsParser:
     """Simple robots.txt parser."""
+
     # pylint: disable=too-few-public-methods
     # Simple parser class focused on single responsibility
 
@@ -28,7 +29,7 @@ class RobotsParser:
 
     def _parse_robots_txt(self, robots_txt: str, user_agent: str) -> None:
         """Parse robots.txt and extract rules for the given user agent."""
-        lines = robots_txt.split('\n')
+        lines = robots_txt.split("\n")
         best_section_start = self._find_best_section(lines, user_agent)
 
         # If no section matched, allow all access (no rules)
@@ -45,10 +46,10 @@ class RobotsParser:
 
         for i, line in enumerate(lines):
             line = line.strip()
-            if not line.lower().startswith('user-agent:'):
+            if not line.lower().startswith("user-agent:"):
                 continue
 
-            ua = line.split(':', 1)[1].strip().lower()
+            ua = line.split(":", 1)[1].strip().lower()
             specificity = self._calculate_specificity(user_agent, ua)
 
             if specificity > best_specificity:
@@ -74,11 +75,11 @@ class RobotsParser:
 
         for i in range(start_index, len(lines)):
             line = lines[i].strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Handle user-agent directive
-            if line.lower().startswith('user-agent:'):
+            if line.lower().startswith("user-agent:"):
                 if found_section_header:
                     # We've reached the next section, stop
                     break
@@ -87,11 +88,11 @@ class RobotsParser:
 
             # Parse Allow/Disallow directives in the current section
             if found_section_header:
-                if line.lower().startswith('allow:'):
-                    path = line.split(':', 1)[1].strip()
+                if line.lower().startswith("allow:"):
+                    path = line.split(":", 1)[1].strip()
                     self.rules.append((path, True))
-                elif line.lower().startswith('disallow:'):
-                    path = line.split(':', 1)[1].strip()
+                elif line.lower().startswith("disallow:"):
+                    path = line.split(":", 1)[1].strip()
                     self.rules.append((path, False))
 
     def is_allowed(self, url: str) -> bool:
@@ -106,14 +107,14 @@ class RobotsParser:
         parsed = urlparse(url)
         path = parsed.path
         if parsed.query:
-            path += '?' + parsed.query
+            path += "?" + parsed.query
 
         # Find the most specific (longest pattern) matching rule
         best_match: tuple[int, bool] | None = None  # (pattern_length, allow)
         for pattern, allow in self.rules:
             if self._matches_pattern(path, pattern):
                 pattern_length = len(pattern)
-                if best_match is None or pattern_length > best_match[0]:
+                if best_match is None or pattern_length > best_match[0]:  # pylint: disable=unsubscriptable-object
                     best_match = (pattern_length, allow)
 
         # Return the most specific match, or allow if no matching rules
@@ -136,11 +137,11 @@ class RobotsParser:
         # * matches any sequence of characters
         # $ matches end of path
         regex_pattern = re.escape(pattern)
-        regex_pattern = regex_pattern.replace(r'\*', '.*')
-        if pattern.endswith('$'):
-            regex_pattern = regex_pattern[:-2] + '$'
+        regex_pattern = regex_pattern.replace(r"\*", ".*")
+        if pattern.endswith("$"):
+            regex_pattern = regex_pattern[:-2] + "$"
         else:
-            regex_pattern += '.*'
+            regex_pattern += ".*"
 
         return bool(re.match(regex_pattern, path))
 
@@ -158,14 +159,16 @@ def fetch_robots_txt(base_url: str, http_client: HttpClient) -> str:
     Raises:
         RobotsError: If robots.txt cannot be fetched
     """
-    robots_url = urljoin(base_url, '/robots.txt')
+    robots_url = urljoin(base_url, "/robots.txt")
     try:
         return http_client.get(robots_url)
     except Exception as e:
         raise RobotsError(f"Failed to fetch robots.txt from {robots_url}: {e}") from e
 
 
-def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str = "*", strict: bool = False) -> bool:
+def check_api_disallowed(
+    base_url: str, http_client: HttpClient, user_agent: str = "*", strict: bool = False
+) -> bool:
     """Check robots.txt compliance for all API endpoints.
 
     This SDK only uses publicly available resources (HTML pages and XML sitemaps)
@@ -190,11 +193,11 @@ def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str
 
     # Ensure all API paths are disallowed (we don't use any APIs)
     api_paths = [
-        '/api/',
-        '/api/typeahead',
-        '/api/stats',
-        '/api/search',
-        '/api/anything',
+        "/api/",
+        "/api/typeahead",
+        "/api/stats",
+        "/api/search",
+        "/api/anything",
     ]
 
     api_allowed = False
@@ -205,7 +208,7 @@ def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str
             logger.warning("API path %s is allowed by robots.txt", path)
 
     # Verify that required public resources are accessible
-    required_paths = ['/', '/page/Test', '/sitemap.xml']
+    required_paths = ["/", "/page/Test", "/sitemap.xml"]
     for path in required_paths:
         test_url = urljoin(base_url, path)
         if not parser.is_allowed(test_url):
@@ -213,9 +216,13 @@ def check_api_disallowed(base_url: str, http_client: HttpClient, user_agent: str
 
     if api_allowed:
         if strict:
-            raise RobotsError("API endpoints are allowed by robots.txt but strict mode "
-                              "requires they be disallowed")
-        logger.warning("API endpoints allowed by robots.txt - API search will be disabled for compliance")
+            raise RobotsError(
+                "API endpoints are allowed by robots.txt but strict mode "
+                "requires they be disallowed"
+            )
+        logger.warning(
+            "API endpoints allowed by robots.txt - API search will be disabled for compliance"
+        )
         return True  # Disable API access
 
     logger.info("Robots.txt compliance verified - API endpoints properly disallowed")

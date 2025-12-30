@@ -25,12 +25,12 @@ def parse_sitemap_index(sitemap_xml: str) -> List[str]:
         ParseError: If XML parsing fails
     """
     try:
-        soup = BeautifulSoup(sitemap_xml, 'xml')
+        soup = BeautifulSoup(sitemap_xml, "xml")
         sitemap_urls = []
 
         # Find all <loc> elements within <sitemap> elements
-        for sitemap in soup.find_all('sitemap'):
-            loc = sitemap.find('loc')
+        for sitemap in soup.find_all("sitemap"):
+            loc = sitemap.find("loc")
             if loc and loc.text:
                 sitemap_urls.append(loc.text.strip())
 
@@ -52,12 +52,12 @@ def parse_sitemap_part(sitemap_xml: str) -> List[str]:
         ParseError: If XML parsing fails
     """
     try:
-        soup = BeautifulSoup(sitemap_xml, 'xml')
+        soup = BeautifulSoup(sitemap_xml, "xml")
         urls = []
 
         # Find all <loc> elements (article URLs)
-        for url in soup.find_all('url'):
-            loc = url.find('loc')
+        for url in soup.find_all("url"):
+            loc = url.find("loc")
             if loc and loc.text:
                 urls.append(loc.text.strip())
 
@@ -67,9 +67,7 @@ def parse_sitemap_part(sitemap_xml: str) -> List[str]:
 
 
 def iter_sitemap_urls(
-    base_url: str,
-    http_client: HttpClient,
-    max_urls: Optional[int] = None
+    base_url: str, http_client: HttpClient, max_urls: Optional[int] = None
 ) -> Iterator[str]:
     """Iterate through all article URLs from the sitemap.
 
@@ -85,7 +83,7 @@ def iter_sitemap_urls(
         ParseError: If sitemap parsing fails
     """
     # Fetch the main sitemap index
-    sitemap_index_url = urljoin(base_url, '/sitemap.xml')
+    sitemap_index_url = urljoin(base_url, "/sitemap.xml")
     try:
         sitemap_index_xml = http_client.get(sitemap_index_url)
     except Exception as e:  # pylint: disable=broad-exception-caught

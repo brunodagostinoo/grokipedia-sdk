@@ -3,10 +3,11 @@
 import html
 import sys
 from importlib.metadata import version
-from typing import Any, Optional
+from typing import Optional
 
 try:
     import click
+
     HAS_CLICK = True
 except ImportError:
     click = None  # type: ignore[assignment]
@@ -25,6 +26,7 @@ except Exception:  # pylint: disable=broad-exception-caught
 
 # Define CLI group conditionally
 if HAS_CLICK and click is not None:
+
     def _format_page_text(page_obj: Page) -> str:
         """Format a page as plain text (Markdown-style)."""
         lines = []
@@ -93,24 +95,46 @@ if HAS_CLICK and click is not None:
         return "\n".join(lines)
 
     @click.group()
-    @click.version_option(version=__version__, prog_name='grokipedia')
-    @click.option('--base-url', default='https://grokipedia.com',
-                  help='Base URL for Grokipedia')
-    @click.option('--user-agent', default=f'grokipedia-sdk/{__version__}',
-                  help='User agent string')
-    @click.option('--timeout', default=10.0, type=click.FloatRange(min=0.1, max=300.0),
-                  help='Request timeout in seconds (0.1-300)')
-    @click.option('--rate-limit', default=30, type=click.IntRange(min=1, max=120),
-                  help='Requests per minute (1-120)')
-    @click.option('--no-cache', is_flag=True,
-                  help='Disable HTTP caching')
-    @click.option('--enable-api-search', is_flag=True,
-                  help='Enable API-based search (uses /api/full-text-search)')
+    @click.version_option(version=__version__, prog_name="grokipedia")
+    @click.option(
+        "--base-url", default="https://grokipedia.com", help="Base URL for Grokipedia"
+    )
+    @click.option(
+        "--user-agent",
+        default=f"grokipedia-sdk/{__version__}",
+        help="User agent string",
+    )
+    @click.option(
+        "--timeout",
+        default=10.0,
+        type=click.FloatRange(min=0.1, max=300.0),
+        help="Request timeout in seconds (0.1-300)",
+    )
+    @click.option(
+        "--rate-limit",
+        default=30,
+        type=click.IntRange(min=1, max=120),
+        help="Requests per minute (1-120)",
+    )
+    @click.option("--no-cache", is_flag=True, help="Disable HTTP caching")
+    @click.option(
+        "--enable-api-search",
+        is_flag=True,
+        help="Enable API-based search (uses /api/full-text-search)",
+    )
     @click.pass_context
-    def cli(ctx: click.Context, base_url: str, user_agent: str, timeout: float, rate_limit: int, no_cache: bool, enable_api_search: bool) -> None:  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def cli(
+        ctx: click.Context,
+        base_url: str,
+        user_agent: str,
+        timeout: float,
+        rate_limit: int,
+        no_cache: bool,
+        enable_api_search: bool,
+    ) -> None:  # pylint: disable=too-many-arguments,too-many-positional-arguments
         """Grokipedia SDK command-line interface."""
         ctx.ensure_object(dict)
-        ctx.obj['client'] = GrokipediaClient(
+        ctx.obj["client"] = GrokipediaClient(
             base_url=base_url,
             user_agent=user_agent,
             timeout=timeout,
@@ -120,15 +144,23 @@ if HAS_CLICK and click is not None:
         )
 
     @cli.command()
-    @click.argument('query')
-    @click.option('--limit', default=10, type=click.IntRange(min=1, max=100),
-                  help='Maximum number of results (1-100)')
-    @click.option('--page', default=1, type=click.IntRange(min=1),
-                  help='Page number (starts at 1)')
+    @click.argument("query")
+    @click.option(
+        "--limit",
+        default=10,
+        type=click.IntRange(min=1, max=100),
+        help="Maximum number of results (1-100)",
+    )
+    @click.option(
+        "--page",
+        default=1,
+        type=click.IntRange(min=1),
+        help="Page number (starts at 1)",
+    )
     @click.pass_context
     def search(ctx: click.Context, query: str, limit: int, page: int) -> None:
         """Search for articles."""
-        client: GrokipediaClient = ctx.obj['client']
+        client: GrokipediaClient = ctx.obj["client"]
 
         try:
             results = client.search(query, page=page, limit=limit)
@@ -145,8 +177,11 @@ if HAS_CLICK and click is not None:
                 click.echo(f"   URL: {result.url}")
                 if result.snippet:
                     # Truncate snippet if too long
-                    snippet = (result.snippet[:100] + '...'
-                              if len(result.snippet) > 100 else result.snippet)
+                    snippet = (
+                        result.snippet[:100] + "..."
+                        if len(result.snippet) > 100
+                        else result.snippet
+                    )
                     click.echo(f"   Summary: {snippet}")
                 if result.thumbnail_url:
                     click.echo(f"   Thumbnail: {result.thumbnail_url}")
@@ -159,22 +194,27 @@ if HAS_CLICK and click is not None:
             click.echo(f"Unexpected error: {e}", err=True)
             sys.exit(2)
 
-    @cli.command(name='page')
-    @click.argument('title')
-    @click.option('--output-format', type=click.Choice(['text', 'html']),
-                  default='text', help='Output format')
-    @click.option('--output', type=click.Path(),
-                  help='Output file (default: stdout)')
+    @cli.command(name="page")
+    @click.argument("title")
+    @click.option(
+        "--output-format",
+        type=click.Choice(["text", "html"]),
+        default="text",
+        help="Output format",
+    )
+    @click.option("--output", type=click.Path(), help="Output file (default: stdout)")
     @click.pass_context
-    def page_cmd(ctx: click.Context, title: str, output_format: str, output: Optional[str]) -> None:
+    def page_cmd(
+        ctx: click.Context, title: str, output_format: str, output: Optional[str]
+    ) -> None:
         """Fetch and display an article page."""
-        client: GrokipediaClient = ctx.obj['client']
+        client: GrokipediaClient = ctx.obj["client"]
 
         try:
             page_obj = client.get_page(title)
 
             # Generate output
-            if output_format == 'html':
+            if output_format == "html":
                 output_content = _format_page_html(page_obj)
             else:
                 output_content = _format_page_text(page_obj)
@@ -182,7 +222,7 @@ if HAS_CLICK and click is not None:
             # Write to file or stdout
             if output:
                 try:
-                    with open(output, 'w', encoding='utf-8') as f:
+                    with open(output, "w", encoding="utf-8") as f:
                         f.write(output_content)
                     click.echo(f"Page saved to {output}")
                 except OSError as e:
@@ -205,18 +245,20 @@ else:
 def main() -> None:
     """Main CLI entry point."""
     if not HAS_CLICK or click is None or cli is None:
-        print("Error: click is required for CLI. "
-              "Install with: pip install grokipedia-sdk[cli]")
+        print(
+            "Error: click is required for CLI. "
+            "Install with: pip install grokipedia-sdk[cli]"
+        )
         sys.exit(1)
 
     try:
         cli.main(standalone_mode=True)
-    except SystemExit:
+    except SystemExit:  # pylint: disable=try-except-raise
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
         click.echo(f"Fatal error: {e}", err=True)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

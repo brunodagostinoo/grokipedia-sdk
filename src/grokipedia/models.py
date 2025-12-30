@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 @dataclass
 class SearchResult:
     """Represents a search result from Grokipedia."""
+
     title: str
     url: str
     thumbnail_url: Optional[str] = None
@@ -16,6 +17,7 @@ class SearchResult:
 @dataclass
 class Section:
     """Represents a section of a Grokipedia article."""
+
     title: str
     html: str
     text: str
@@ -24,6 +26,7 @@ class Section:
 @dataclass
 class Page:
     """Represents a complete Grokipedia article page."""
+
     title: str
     url: str
     summary: str

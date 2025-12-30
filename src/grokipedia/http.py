@@ -15,6 +15,7 @@ from grokipedia.exceptions import HttpError, NotFoundError, RateLimitError
 
 class HttpClient:
     """HTTP client with rate limiting, caching, and retry logic."""
+
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     # HTTP client requires many attributes for comprehensive configuration
 
@@ -26,7 +27,9 @@ class HttpClient:
         backoff_factor: float = 0.3,
         requests_per_minute: int = 30,
         cache_ttl: Optional[float] = None,  # TTL in seconds, None to disable
-        max_cache_entries: Optional[int] = None,  # Max cache entries, None for unlimited
+        max_cache_entries: Optional[
+            int
+        ] = None,  # Max cache entries, None for unlimited
     ):
         """Initialize the HTTP client.
 
@@ -74,15 +77,17 @@ class HttpClient:
         self.session.mount("https://", adapter)
 
         # Set default headers
-        self.session.headers.update({
-            "User-Agent": user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
-            "DNT": "1",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        })
+        self.session.headers.update(
+            {
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate",
+                "DNT": "1",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+        )
 
     def _check_rate_limit(self) -> None:
         """Enforce rate limiting before making a request."""
@@ -128,7 +133,9 @@ class HttpClient:
         # Check cache first
         cache_key = self._get_cache_key(url)
         with self._cache_lock:
-            if cache_key in self._cache and self._is_cache_valid(self._cache[cache_key]):
+            if cache_key in self._cache and self._is_cache_valid(
+                self._cache[cache_key]
+            ):
                 # Move to end (most recently used)
                 self._cache.move_to_end(cache_key)
                 _, cached_response = self._cache[cache_key]
@@ -151,19 +158,25 @@ class HttpClient:
                     self._cache.move_to_end(cache_key)  # Mark as most recently used
 
                     # Enforce cache size limit (LRU eviction)
-                    if self.max_cache_entries is not None and len(self._cache) > self.max_cache_entries:
-                        self._cache.popitem(last=False)  # Remove oldest (least recently used)
+                    if (
+                        self.max_cache_entries is not None
+                        and len(self._cache) > self.max_cache_entries
+                    ):
+                        self._cache.popitem(
+                            last=False
+                        )  # Remove oldest (least recently used)
 
             return response.text
 
         except requests.exceptions.RequestException as e:
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 if e.response.status_code == 404:
                     raise NotFoundError(f"Not found: {url}") from e
                 if e.response.status_code == 429:
                     raise RateLimitError(f"Rate limit exceeded for {url}") from e
-                raise HttpError(f"HTTP {e.response.status_code} for {url}: "
-                                f"{e.response.text}") from e
+                raise HttpError(
+                    f"HTTP {e.response.status_code} for {url}: " f"{e.response.text}"
+                ) from e
             raise HttpError(f"Request failed for {url}: {str(e)}") from e
 
     def clear_cache(self) -> None:
@@ -178,7 +191,8 @@ class HttpClient:
                 return len(self._cache)
             now = time.time()
             return sum(
-                1 for timestamp, _ in self._cache.values()
+                1
+                for timestamp, _ in self._cache.values()
                 if now - timestamp < self.cache_ttl
             )
 
