@@ -3,6 +3,9 @@
 import os
 from unittest.mock import Mock, patch
 
+import pytest
+
+pytest.importorskip("click")
 from click.testing import CliRunner
 
 from grokipedia.cli import cli, __version__
